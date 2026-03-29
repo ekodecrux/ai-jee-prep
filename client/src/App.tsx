@@ -13,19 +13,40 @@ import StudyPlanPage from "./pages/StudyPlanPage";
 import ApiDocsPage from "./pages/ApiDocsPage";
 import SearchPage from "./pages/SearchPage";
 import MockTestPage from "./pages/MockTestPage";
+import PerformanceDashboard from "./pages/PerformanceDashboard";
+import ProctoredExam from "./pages/ProctoredExam";
+import SuperAdminPortal from "./pages/SuperAdminPortal";
+import InstituteAdminPortal from "./pages/InstituteAdminPortal";
+import TeacherPortal from "./pages/TeacherPortal";
+import ParentPortal from "./pages/ParentPortal";
 
 function Router() {
   return (
     <Switch>
+      {/* Public */}
       <Route path="/" component={Home} />
+      <Route path="/search" component={SearchPage} />
+      <Route path="/api-docs" component={ApiDocsPage} />
+
+      {/* Student Learning */}
       <Route path="/subject/:subjectId" component={SubjectPage} />
       <Route path="/chapter/:chapterId" component={ChapterPage} />
       <Route path="/chapter/:chapterId/assess" component={AssessmentPage} />
+      <Route path="/chapter/:chapterId/exam" component={ProctoredExam} />
+
+      {/* Student Dashboard */}
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/study-plan" component={StudyPlanPage} />
-      <Route path="/search" component={SearchPage} />
+      <Route path="/performance" component={PerformanceDashboard} />
       <Route path="/mock-test/:mockTestId" component={MockTestPage} />
-      <Route path="/api-docs" component={ApiDocsPage} />
+
+      {/* Role Portals */}
+      <Route path="/super-admin" component={SuperAdminPortal} />
+      <Route path="/institute-admin" component={InstituteAdminPortal} />
+      <Route path="/teacher" component={TeacherPortal} />
+      <Route path="/parent" component={ParentPortal} />
+
+      {/* Fallback */}
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

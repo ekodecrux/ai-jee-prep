@@ -5,6 +5,11 @@ import { publicProcedure, router } from "./_core/trpc";
 import { chaptersRouter } from "./routers/chapters";
 import { contentRouter } from "./routers/content";
 import { assessmentsRouter } from "./routers/assessments";
+import { adminRouter } from "./routers/admin";
+import { proctoringRouter } from "./routers/proctoring";
+import { analyticsRouter } from "./routers/analytics";
+import { lessonPlanRouter } from "./routers/lessonPlan";
+import { notificationsRouter } from "./routers/notifications";
 
 export const appRouter = router({
   system: systemRouter,
@@ -19,6 +24,11 @@ export const appRouter = router({
   chapters: chaptersRouter,
   content: contentRouter,
   assessments: assessmentsRouter,
+  admin: adminRouter,
+  proctoring: proctoringRouter,
+  analytics: analyticsRouter,
+  lessonPlan: lessonPlanRouter,
+  notifications: notificationsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -5,6 +5,7 @@
  */
 import { Router, Request, Response, NextFunction } from "express";
 import { getDb } from "../db";
+import { invokeLLM } from "../_core/llm";
 import { chapters, subjects, curricula, exams, examChapterWeightage, narrationScripts, questions, assessments, apiKeys } from "../../drizzle/schema";
 import { eq, and, like, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -375,6 +376,48 @@ router.post("/keys/demo", async (req, res) => {
       scopes: ["read"],
       note: "This is a demo key. Contact us for production API access."
     });
+  } catch (e: any) { err(res, 500, e.message); }
+});
+
+// ─── Ask Doubt (AI Avatar Tutor endpoint) ────────────────────────────────────
+router.post("/ask-doubt", async (req, res) => {
+  try {
+    const { question, chapterId, context } = req.body;
+    if (!question) return err(res, 400, "question is required");
+
+    const db = await getDb();
+    let chapterContext = context || "";
+
+    // Fetch chapter info for richer context
+    if (chapterId && db) {
+      const ch = await db.select().from(chapters).where(eq(chapters.chapterId, chapterId)).limit(1);
+      if (ch.length) {
+        chapterContext = `Chapter: ${ch[0].title}. Key topics: ${(ch[0].keyTopics as string[] || []).join(", ")}. ${context || ""}`;
+      }
+    }
+
+    const systemPrompt = `You are Priya, a warm, encouraging, and highly knowledgeable female AI tutor specializing in JEE (Joint Entrance Examination) preparation. You teach Physics, Chemistry, and Mathematics for Class 11 and 12 students.
+
+Your teaching style:
+- Explain concepts clearly with step-by-step reasoning
+- Use relatable analogies and real-world examples
+- Always show the formula, then the derivation, then a worked example
+- Encourage the student and build their confidence
+- Keep answers concise but complete (2-4 paragraphs max)
+- Use simple language that a Class 11 student can understand
+- If relevant, mention JEE Main/Advanced exam tips
+
+Context: ${chapterContext}`;
+
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: question },
+      ],
+    });
+
+    const answer = response.choices?.[0]?.message?.content || "I couldn't process that question. Please try again.";
+    res.json({ answer, chapterId, question });
   } catch (e: any) { err(res, 500, e.message); }
 });
 

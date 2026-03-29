@@ -328,3 +328,499 @@ export const mockTestAttempts = mysqlTable("mock_test_attempts", {
   completedAt: timestamp("completedAt"),
   status: mysqlEnum("status", ["in_progress", "completed", "abandoned"]).default("in_progress"),
 });
+
+// ─── Tuition Session Modes ────────────────────────────────────────────────────
+// Tracks individual lesson/exam sessions in tuition-center mode
+export const tuitionSessions = mysqlTable("tuition_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  chapterId: varchar("chapterId", { length: 64 }).notNull(),
+  subjectId: varchar("subjectId", { length: 64 }).notNull(),
+  sessionType: mysqlEnum("sessionType", [
+    "lesson_30min",    // 30-min condensed narration
+    "exam_15min",      // 15-min weekday quick exam (10 questions)
+    "exam_60min",      // 1-hr weekend exam (30 questions)
+    "practice",        // unlimited practice mode
+    "revision",        // revision session
+  ]).notNull(),
+  scheduledDate: varchar("scheduledDate", { length: 10 }),  // YYYY-MM-DD
+  scheduledTime: varchar("scheduledTime", { length: 5 }),   // HH:MM
+  durationMinutes: int("durationMinutes"),
+  completedAt: timestamp("completedAt"),
+  score: float("score"),
+  maxScore: float("maxScore"),
+  percentage: float("percentage"),
+  questionsAttempted: int("questionsAttempted").default(0),
+  questionsCorrect: int("questionsCorrect").default(0),
+  status: mysqlEnum("status", ["scheduled", "in_progress", "completed", "missed"]).default("scheduled"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TuitionSession = typeof tuitionSessions.$inferSelect;
+
+// ─── Indian Holidays ──────────────────────────────────────────────────────────
+// Pre-seeded national + major regional holidays for 20-month plan scheduling
+export const indianHolidays = mysqlTable("indian_holidays", {
+  id: int("id").autoincrement().primaryKey(),
+  holidayDate: varchar("holidayDate", { length: 10 }).notNull().unique(), // YYYY-MM-DD
+  name: varchar("name", { length: 256 }).notNull(),
+  type: mysqlEnum("type", ["national", "regional", "festival", "exam_related"]).notNull(),
+  isStudyOff: boolean("isStudyOff").default(true).notNull(),  // skip lesson on this day
+  description: text("description"),
+});
+export type IndianHoliday = typeof indianHolidays.$inferSelect;
+
+// ─── 20-Month Adaptive Lesson Plan ───────────────────────────────────────────
+// Pre-generated day-by-day lesson plan for each student
+export const lessonPlanDays = mysqlTable("lesson_plan_days", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  planDate: varchar("planDate", { length: 10 }).notNull(),     // YYYY-MM-DD
+  monthNumber: int("monthNumber").notNull(),                   // 1-20
+  weekNumber: int("weekNumber").notNull(),                     // 1-87 approx
+  dayOfWeek: mysqlEnum("dayOfWeek", ["mon","tue","wed","thu","fri","sat","sun"]).notNull(),
+  isHoliday: boolean("isHoliday").default(false).notNull(),
+  holidayName: varchar("holidayName", { length: 256 }),
+  chapterId: varchar("chapterId", { length: 64 }),
+  subjectId: varchar("subjectId", { length: 64 }),
+  sessionType: mysqlEnum("sessionType", ["lesson_30min","exam_15min","exam_60min","revision","holiday","mock_test"]),
+  mockTestId: varchar("mockTestId", { length: 64 }),           // if sessionType = mock_test
+  isCompleted: boolean("isCompleted").default(false).notNull(),
+  completedAt: timestamp("completedAt"),
+  isRescheduled: boolean("isRescheduled").default(false).notNull(),
+  originalDate: varchar("originalDate", { length: 10 }),       // if rescheduled
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type LessonPlanDay = typeof lessonPlanDays.$inferSelect;
+
+// ─── Mock Test Schedule ───────────────────────────────────────────────────────
+// Pre-generated mock tests with calendar-based unlock dates
+export const mockTestSchedule = mysqlTable("mock_test_schedule", {
+  id: int("id").autoincrement().primaryKey(),
+  mockTestId: varchar("mockTestId", { length: 64 }).notNull().unique(),
+  examId: varchar("examId", { length: 64 }).notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  testType: mysqlEnum("testType", ["subject_mock", "full_mock", "weekly_test"]).notNull(),
+  subjectId: varchar("subjectId", { length: 64 }),
+  monthNumber: int("monthNumber"),                             // which month it unlocks
+  scheduledUnlockDate: varchar("scheduledUnlockDate", { length: 10 }), // YYYY-MM-DD
+  durationMinutes: int("durationMinutes").default(180),
+  totalMarks: int("totalMarks").default(300),
+  totalQuestions: int("totalQuestions").default(90),
+  sectionConfig: json("sectionConfig").$type<Array<{
+    subjectId: string;
+    questionCount: number;
+    marks: number;
+    durationMinutes?: number;
+  }>>(),
+  questionIds: json("questionIds").$type<number[]>(),
+  isPreGenerated: boolean("isPreGenerated").default(false).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type MockTestSchedule = typeof mockTestSchedule.$inferSelect;
+
+// ─── Chapter Performance Heatmap ──────────────────────────────────────────────
+// Real-time chapter-wise performance color band per student
+export const chapterHeatmap = mysqlTable("chapter_heatmap", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  chapterId: varchar("chapterId", { length: 64 }).notNull(),
+  subjectId: varchar("subjectId", { length: 64 }).notNull(),
+  heatmapScore: float("heatmapScore").default(0).notNull(),    // 0-100 composite score
+  colorBand: mysqlEnum("colorBand", ["red", "amber", "green", "unstarted"]).default("unstarted").notNull(),
+  // Score breakdown
+  assessmentAvgScore: float("assessmentAvgScore").default(0),
+  pastPaperAvgScore: float("pastPaperAvgScore").default(0),
+  mockTestAvgScore: float("mockTestAvgScore").default(0),
+  attemptsCount: int("attemptsCount").default(0),
+  // Trend
+  previousColorBand: mysqlEnum("previousColorBand", ["red", "amber", "green", "unstarted"]).default("unstarted"),
+  trendDirection: mysqlEnum("trendDirection", ["improving", "stable", "declining", "new"]).default("new"),
+  lastUpdated: timestamp("lastUpdated").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ChapterHeatmap = typeof chapterHeatmap.$inferSelect;
+
+// ─── JEE Score Predictions ────────────────────────────────────────────────────
+// AI-generated score prediction per student, updated after each assessment
+export const jeeScorePredictions = mysqlTable("jee_score_predictions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  examId: varchar("examId", { length: 64 }).notNull(),         // jee_main or jee_advanced
+  // Predicted scores
+  predictedScore: float("predictedScore").notNull(),           // e.g. 187 out of 300
+  maxPossibleScore: float("maxPossibleScore").notNull(),        // e.g. 300
+  optimisticScore: float("optimisticScore"),                   // best case
+  conservativeScore: float("conservativeScore"),               // worst case
+  confidencePercent: float("confidencePercent").default(50),   // 0-100
+  // Rank prediction
+  predictedRank: int("predictedRank"),
+  predictedRankRange: json("predictedRankRange").$type<{ min: number; max: number }>(),
+  // Breakdown
+  subjectScores: json("subjectScores").$type<Record<string, {
+    predicted: number;
+    max: number;
+    confidence: number;
+  }>>(),
+  weakChapters: json("weakChapters").$type<Array<{
+    chapterId: string;
+    title: string;
+    currentScore: number;
+    potentialGain: number;
+  }>>(),
+  recommendations: json("recommendations").$type<string[]>(),
+  // Trajectory
+  scoreHistory: json("scoreHistory").$type<Array<{
+    date: string;
+    score: number;
+  }>>(),
+  // Meta
+  dataPointsUsed: int("dataPointsUsed").default(0),
+  generatedAt: timestamp("generatedAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type JeeScorePrediction = typeof jeeScorePredictions.$inferSelect;
+
+// ─── Proctoring Events ────────────────────────────────────────────────────────
+// Real-time anti-cheating event log during proctored exams
+export const proctoringEvents = mysqlTable("proctoring_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  attemptId: int("attemptId"),                                 // assessmentAttempt.id or mockTestAttempt.id
+  attemptType: mysqlEnum("attemptType", ["chapter_test", "subject_mock", "full_mock", "weekly_test"]).notNull(),
+  eventType: mysqlEnum("eventType", [
+    "face_not_detected",
+    "multiple_faces",
+    "gaze_away",
+    "tab_switch",
+    "window_blur",
+    "fullscreen_exit",
+    "keyboard_shortcut",
+    "copy_attempt",
+    "paste_attempt",
+    "right_click",
+    "exam_started",
+    "exam_submitted",
+    "warning_issued",
+    "auto_submitted",
+  ]).notNull(),
+  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).default("low").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  durationSeconds: int("durationSeconds"),                     // how long the event lasted
+  metadata: json("metadata").$type<Record<string, unknown>>(), // extra data (gaze coords, etc.)
+  warningNumber: int("warningNumber"),                         // 1, 2, or 3
+});
+export type ProctoringEvent = typeof proctoringEvents.$inferSelect;
+
+// ─── Proctoring Reports ───────────────────────────────────────────────────────
+// Summary report per exam attempt for admin review
+export const proctoringReports = mysqlTable("proctoring_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  attemptId: int("attemptId").notNull(),
+  attemptType: mysqlEnum("attemptType", ["chapter_test", "subject_mock", "full_mock", "weekly_test"]).notNull(),
+  suspiciousScore: float("suspiciousScore").default(0).notNull(), // 0-100 (higher = more suspicious)
+  totalEvents: int("totalEvents").default(0).notNull(),
+  highSeverityEvents: int("highSeverityEvents").default(0),
+  tabSwitches: int("tabSwitches").default(0),
+  faceNotDetectedCount: int("faceNotDetectedCount").default(0),
+  gazeAwayCount: int("gazeAwayCount").default(0),
+  warningsIssued: int("warningsIssued").default(0),
+  wasAutoSubmitted: boolean("wasAutoSubmitted").default(false).notNull(),
+  reviewStatus: mysqlEnum("reviewStatus", ["pending", "reviewed_clean", "reviewed_flagged", "invalidated"]).default("pending"),
+  reviewedBy: int("reviewedBy"),                               // admin userId
+  reviewNotes: text("reviewNotes"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ProctoringReport = typeof proctoringReports.$inferSelect;
+
+// ─── Weekly Performance Summary ──────────────────────────────────────────────
+// Aggregated weekly stats for performance dashboard charts
+export const weeklyPerformance = mysqlTable("weekly_performance", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  weekStartDate: varchar("weekStartDate", { length: 10 }).notNull(), // YYYY-MM-DD (Monday)
+  weekNumber: int("weekNumber").notNull(),                     // ISO week number
+  year: int("year").notNull(),
+  // Scores
+  avgScore: float("avgScore").default(0),
+  chaptersCompleted: int("chaptersCompleted").default(0),
+  assessmentsTaken: int("assessmentsTaken").default(0),
+  mockTestsTaken: int("mockTestsTaken").default(0),
+  studyMinutes: int("studyMinutes").default(0),
+  // Subject breakdown
+  physicsAvg: float("physicsAvg").default(0),
+  chemistryAvg: float("chemistryAvg").default(0),
+  mathematicsAvg: float("mathematicsAvg").default(0),
+  // Heatmap snapshot
+  greenChapters: int("greenChapters").default(0),
+  amberChapters: int("amberChapters").default(0),
+  redChapters: int("redChapters").default(0),
+  // Prediction at end of week
+  predictedJeeMainScore: float("predictedJeeMainScore"),
+  predictedJeeAdvancedScore: float("predictedJeeAdvancedScore"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type WeeklyPerformance = typeof weeklyPerformance.$inferSelect;
+
+// ─── Institutes (SaaS Multi-Tenant) ──────────────────────────────────────────
+// An institute is a school, coaching center, or university using the platform
+export const institutes = mysqlTable("institutes", {
+  id: int("id").autoincrement().primaryKey(),
+  instituteId: varchar("instituteId", { length: 64 }).notNull().unique(), // e.g. "allen_kota"
+  name: varchar("name", { length: 256 }).notNull(),
+  shortName: varchar("shortName", { length: 64 }),
+  code: varchar("code", { length: 32 }).unique(),                   // unique short code
+  logoUrl: varchar("logoUrl", { length: 512 }),
+  primaryColor: varchar("primaryColor", { length: 7 }),             // brand color hex
+  contactEmail: varchar("contactEmail", { length: 320 }),
+  contactPhone: varchar("contactPhone", { length: 32 }),
+  address: text("address"),
+  city: varchar("city", { length: 128 }),
+  state: varchar("state", { length: 128 }),
+  country: varchar("country", { length: 64 }).default("India"),
+  website: varchar("website", { length: 512 }),
+  subscriptionPlan: mysqlEnum("subscriptionPlan", ["trial", "basic", "standard", "premium", "enterprise"]).default("trial").notNull(),
+  subscriptionExpiresAt: timestamp("subscriptionExpiresAt"),
+  maxStudents: int("maxStudents").default(100),
+  maxTeachers: int("maxTeachers").default(10),
+  enrollmentModel: mysqlEnum("enrollmentModel", ["institute_led", "self_enrolled", "hybrid"]).default("self_enrolled").notNull(),
+  onboardedBy: int("onboardedBy"),                                  // super admin userId who approved
+  isActive: boolean("isActive").default(true).notNull(),
+  isVerified: boolean("isVerified").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Institute = typeof institutes.$inferSelect;
+
+// ─── Update users.role to 5-tier SaaS roles ──────────────────────────────────
+// NOTE: The users table role enum is extended via ALTER TABLE migration below.
+// Roles: super_admin | institute_admin | teacher | student | parent | user (legacy)
+
+// ─── Institute Members ────────────────────────────────────────────────────────
+// Links a user to an institute with a specific role
+export const instituteMembers = mysqlTable("institute_members", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  instituteId: int("instituteId").notNull(),
+  role: mysqlEnum("role", ["institute_admin", "teacher", "student", "parent"]).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  invitedBy: int("invitedBy"),                                      // userId of who invited them
+  inviteToken: varchar("inviteToken", { length: 128 }),
+  inviteAcceptedAt: timestamp("inviteAcceptedAt"),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type InstituteMember = typeof instituteMembers.$inferSelect;
+
+// ─── Classes ──────────────────────────────────────────────────────────────────
+// A class belongs to an institute and is managed by a teacher
+export const classes = mysqlTable("classes", {
+  id: int("id").autoincrement().primaryKey(),
+  classId: varchar("classId", { length: 64 }).notNull().unique(),
+  instituteId: int("instituteId").notNull(),
+  name: varchar("name", { length: 256 }).notNull(),                 // e.g. "JEE 2026 Batch A"
+  grade: mysqlEnum("grade", ["11", "12", "dropper", "integrated"]).notNull(),
+  teacherId: int("teacherId"),                                      // primary teacher
+  academicYear: varchar("academicYear", { length: 16 }),            // e.g. "2025-26"
+  examFocus: varchar("examFocus", { length: 64 }).default("jee_main"), // jee_main, jee_advanced, both
+  maxStudents: int("maxStudents").default(60),
+  description: text("description"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Class = typeof classes.$inferSelect;
+
+// ─── Class Enrollments ────────────────────────────────────────────────────────
+export const classEnrollments = mysqlTable("class_enrollments", {
+  id: int("id").autoincrement().primaryKey(),
+  classId: int("classId").notNull(),
+  studentId: int("studentId").notNull(),
+  enrolledAt: timestamp("enrolledAt").defaultNow().notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+});
+
+// ─── Parent-Student Links ─────────────────────────────────────────────────────
+export const parentStudentLinks = mysqlTable("parent_student_links", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),
+  studentId: int("studentId").notNull(),
+  relationship: mysqlEnum("relationship", ["father", "mother", "guardian", "other"]).default("guardian").notNull(),
+  isVerified: boolean("isVerified").default(false).notNull(),
+  verifiedAt: timestamp("verifiedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ParentStudentLink = typeof parentStudentLinks.$inferSelect;
+
+// ─── Institution Content Uploads ──────────────────────────────────────────────
+// Universities/institutes can upload their own content to augment the knowledge base
+export const institutionContent = mysqlTable("institution_content", {
+  id: int("id").autoincrement().primaryKey(),
+  contentId: varchar("contentId", { length: 64 }).notNull().unique(),
+  instituteId: int("instituteId"),                                  // null = global platform content
+  uploadedBy: int("uploadedBy").notNull(),
+  contentType: mysqlEnum("contentType", [
+    "mock_test",
+    "model_paper",
+    "chapter_dump",
+    "question_bank",
+    "lecture_notes",
+    "formula_sheet",
+    "previous_year_paper",
+    "reference_material",
+  ]).notNull(),
+  title: varchar("title", { length: 512 }).notNull(),
+  description: text("description"),
+  fileUrl: varchar("fileUrl", { length: 1024 }),                    // S3 URL
+  fileKey: varchar("fileKey", { length: 512 }),                     // S3 key
+  fileType: varchar("fileType", { length: 32 }),                    // pdf, docx, csv, xlsx
+  fileSizeBytes: int("fileSizeBytes"),
+  chapterId: varchar("chapterId", { length: 64 }),                  // linked chapter (if applicable)
+  subjectId: varchar("subjectId", { length: 64 }),
+  examId: varchar("examId", { length: 64 }),
+  targetGrade: mysqlEnum("targetGrade", ["11", "12", "both", "dropper"]).default("both"),
+  parsedStatus: mysqlEnum("parsedStatus", ["pending", "processing", "completed", "failed"]).default("pending").notNull(),
+  parsedAt: timestamp("parsedAt"),
+  parsedData: json("parsedData").$type<Record<string, unknown>>(),  // extracted questions/content
+  questionsExtracted: int("questionsExtracted").default(0),
+  isPublic: boolean("isPublic").default(false).notNull(),           // visible to all students or just institute
+  isApproved: boolean("isApproved").default(false).notNull(),       // super admin approval required
+  approvedBy: int("approvedBy"),
+  approvedAt: timestamp("approvedAt"),
+  tags: json("tags").$type<string[]>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type InstitutionContent = typeof institutionContent.$inferSelect;
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  type: mysqlEnum("type", [
+    "lesson_overdue",
+    "mock_test_unlocked",
+    "mock_test_overdue",
+    "streak_at_risk",
+    "chapter_unlocked",
+    "assessment_reminder",
+    "weak_chapter_alert",
+    "plan_behind_alert",
+    "score_milestone",
+    "weekly_summary",
+    "admin_broadcast",
+    "teacher_message",
+    "parent_report",
+    "system",
+  ]).notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  message: text("message").notNull(),
+  urgency: mysqlEnum("urgency", ["info", "warning", "critical", "success"]).default("info").notNull(),
+  isRead: boolean("isRead").default(false).notNull(),
+  relatedId: varchar("relatedId", { length: 64 }),                  // chapterId, mockTestId, etc.
+  relatedType: varchar("relatedType", { length: 64 }),              // "chapter", "mock_test", "assessment"
+  actionUrl: varchar("actionUrl", { length: 512 }),                 // deep link to relevant page
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  readAt: timestamp("readAt"),
+});
+export type Notification = typeof notifications.$inferSelect;
+
+// ─── Notification Preferences ─────────────────────────────────────────────────
+export const notificationPreferences = mysqlTable("notification_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  lessonReminders: boolean("lessonReminders").default(true).notNull(),
+  mockTestAlerts: boolean("mockTestAlerts").default(true).notNull(),
+  streakAlerts: boolean("streakAlerts").default(true).notNull(),
+  weeklyDigest: boolean("weeklyDigest").default(true).notNull(),
+  parentReports: boolean("parentReports").default(true).notNull(),
+  teacherMessages: boolean("teacherMessages").default(true).notNull(),
+  achievementAlerts: boolean("achievementAlerts").default(true).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+// ─── Avatar Sessions ──────────────────────────────────────────────────────────
+// Tracks AI avatar tutor interaction sessions
+export const avatarSessions = mysqlTable("avatar_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  chapterId: varchar("chapterId", { length: 64 }),
+  sessionType: mysqlEnum("sessionType", ["lesson_narration", "doubt_clarification", "parent_report", "welcome"]).notNull(),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  endedAt: timestamp("endedAt"),
+  durationSeconds: int("durationSeconds"),
+  doubtsAsked: int("doubtsAsked").default(0),
+  sectionsCompleted: json("sectionsCompleted").$type<string[]>(),   // which narration sections were completed
+  voiceInputUsed: boolean("voiceInputUsed").default(false).notNull(),
+  doubtsLog: json("doubtsLog").$type<Array<{ question: string; answer: string; timestamp: string }>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AvatarSession = typeof avatarSessions.$inferSelect;
+
+// ─── Student Profiles (extended info beyond users table) ──────────────────────
+export const studentProfiles = mysqlTable("student_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  instituteId: int("instituteId"),                                  // null for standalone students
+  enrollmentModel: mysqlEnum("enrollmentModel", ["institute", "standalone", "parent_enrolled"]).default("standalone").notNull(),
+  targetExam: varchar("targetExam", { length: 64 }).default("jee_main"),
+  targetYear: int("targetYear"),                                    // e.g. 2027
+  currentGrade: mysqlEnum("currentGrade", ["11", "12", "dropper"]).default("11"),
+  schoolName: varchar("schoolName", { length: 256 }),
+  city: varchar("city", { length: 128 }),
+  state: varchar("state", { length: 128 }),
+  planStartDate: timestamp("planStartDate"),                        // when 20-month plan started
+  planEndDate: timestamp("planEndDate"),
+  subscriptionPlan: mysqlEnum("subscriptionPlan", ["free", "premium", "institute"]).default("free").notNull(),
+  subscriptionExpiresAt: timestamp("subscriptionExpiresAt"),
+  avatarPreference: varchar("avatarPreference", { length: 32 }).default("priya"), // avatar name
+  voicePreference: varchar("voicePreference", { length: 64 }),     // preferred TTS voice
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type StudentProfile = typeof studentProfiles.$inferSelect;
+
+// ─── Teacher Profiles ─────────────────────────────────────────────────────────
+export const teacherProfiles = mysqlTable("teacher_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  instituteId: int("instituteId").notNull(),
+  subjects: json("subjects").$type<string[]>(),                    // ["physics", "chemistry"]
+  qualification: varchar("qualification", { length: 256 }),
+  experienceYears: int("experienceYears"),
+  bio: text("bio"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type TeacherProfile = typeof teacherProfiles.$inferSelect;
+
+// ─── Doubt Board ──────────────────────────────────────────────────────────────
+// Students post doubts; teachers and AI can respond
+export const doubtBoard = mysqlTable("doubt_board", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull(),
+  chapterId: varchar("chapterId", { length: 64 }),
+  questionText: text("questionText").notNull(),
+  questionImageUrl: varchar("questionImageUrl", { length: 512 }),
+  aiAnswer: text("aiAnswer"),
+  aiAnsweredAt: timestamp("aiAnsweredAt"),
+  teacherAnswer: text("teacherAnswer"),
+  teacherAnsweredBy: int("teacherAnsweredBy"),
+  teacherAnsweredAt: timestamp("teacherAnsweredAt"),
+  status: mysqlEnum("status", ["open", "ai_answered", "teacher_answered", "resolved"]).default("open").notNull(),
+  upvotes: int("upvotes").default(0),
+  isPublic: boolean("isPublic").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type DoubtBoard = typeof doubtBoard.$inferSelect;

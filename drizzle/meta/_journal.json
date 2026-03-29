@@ -15,6 +15,20 @@
       "when": 1774794361079,
       "tag": "0001_silly_ghost_rider",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1774803927420,
+      "tag": "0002_overjoyed_tombstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1774805084162,
+      "tag": "0003_cultured_havok",
+      "breakpoints": true
     }
   ]
 }
