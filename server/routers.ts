@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
+import { authExtRouter } from "./routers/auth";
 import { publicProcedure, router } from "./_core/trpc";
 import { chaptersRouter } from "./routers/chapters";
 import { contentRouter } from "./routers/content";
@@ -29,6 +30,7 @@ export const appRouter = router({
   analytics: analyticsRouter,
   lessonPlan: lessonPlanRouter,
   notifications: notificationsRouter,
+  authExt: authExtRouter,
 });
 
 export type AppRouter = typeof appRouter;

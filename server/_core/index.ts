@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import v1Router from "../api/v1";
+import { runAllNotificationTriggers } from "../jobs/notificationTriggers";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -63,6 +64,28 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+
+    // Run notification triggers once on startup (after 10s delay) then every 24 hours
+    setTimeout(async () => {
+      try {
+        const result = await runAllNotificationTriggers();
+        if (result.total > 0) {
+          console.log(`[Startup] Notification triggers: ${result.total} notifications created`);
+        }
+      } catch (err) {
+        console.warn("[Startup] Notification trigger error:", err);
+      }
+    }, 10_000);
+
+    // Daily trigger at midnight
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    setInterval(async () => {
+      try {
+        await runAllNotificationTriggers();
+      } catch (err) {
+        console.warn("[DailyJob] Notification trigger error:", err);
+      }
+    }, TWENTY_FOUR_HOURS);
   });
 }
 

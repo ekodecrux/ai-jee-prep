@@ -824,3 +824,67 @@ export const doubtBoard = mysqlTable("doubt_board", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type DoubtBoard = typeof doubtBoard.$inferSelect;
+
+// ─── Invite Tokens ────────────────────────────────────────────────────────────
+// Used for invite-based onboarding of all roles
+export const inviteTokens = mysqlTable("invite_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  email: varchar("email", { length: 320 }).notNull(),
+  role: mysqlEnum("role", ["institute_admin", "teacher", "student", "parent"]).notNull(),
+  instituteId: int("instituteId"),
+  classId: int("classId"),
+  linkedStudentId: int("linkedStudentId"),          // for parent invites: links to student
+  invitedBy: int("invitedBy").notNull(),             // userId of who sent the invite
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  isUsed: boolean("isUsed").default(false).notNull(),
+  metadata: json("metadata").$type<Record<string, string>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type InviteToken = typeof inviteTokens.$inferSelect;
+
+// ─── Institute Settings ───────────────────────────────────────────────────────
+export const instituteSettings = mysqlTable("institute_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  instituteId: int("instituteId").notNull().unique(),
+  brandColor: varchar("brandColor", { length: 32 }).default("#2563eb"),
+  logoUrl: varchar("logoUrl", { length: 512 }),
+  customDomain: varchar("customDomain", { length: 256 }),
+  maxStudents: int("maxStudents").default(500),
+  subscriptionPlan: mysqlEnum("subscriptionPlan", ["free", "basic", "pro", "enterprise"]).default("free").notNull(),
+  subscriptionExpiry: timestamp("subscriptionExpiry"),
+  featuresEnabled: json("featuresEnabled").$type<string[]>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type InstituteSettings = typeof instituteSettings.$inferSelect;
+
+// ─── Role Sessions (Audit Trail) ──────────────────────────────────────────────
+export const roleSessions = mysqlTable("role_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  role: varchar("role", { length: 64 }).notNull(),
+  instituteId: int("instituteId"),
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  userAgent: varchar("userAgent", { length: 512 }),
+  loginAt: timestamp("loginAt").defaultNow().notNull(),
+  lastActiveAt: timestamp("lastActiveAt").defaultNow().notNull(),
+  logoutAt: timestamp("logoutAt"),
+});
+export type RoleSession = typeof roleSessions.$inferSelect;
+
+// ─── Onboarding Progress ──────────────────────────────────────────────────────
+export const onboardingProgress = mysqlTable("onboarding_progress", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  role: varchar("role", { length: 64 }).notNull(),
+  step: mysqlEnum("step", ["role_selected", "profile_complete", "institute_linked", "class_assigned", "ready"]).default("role_selected").notNull(),
+  completedSteps: json("completedSteps").$type<string[]>(),
+  instituteId: int("instituteId"),
+  inviteTokenId: int("inviteTokenId"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type OnboardingProgress = typeof onboardingProgress.$inferSelect;

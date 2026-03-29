@@ -19,6 +19,8 @@ import SuperAdminPortal from "./pages/SuperAdminPortal";
 import InstituteAdminPortal from "./pages/InstituteAdminPortal";
 import TeacherPortal from "./pages/TeacherPortal";
 import ParentPortal from "./pages/ParentPortal";
+import InstituteConfig from "./pages/InstituteConfig";
+import OnboardingWizard from "./pages/OnboardingWizard";
 
 function Router() {
   return (
@@ -45,6 +47,10 @@ function Router() {
       <Route path="/institute-admin" component={InstituteAdminPortal} />
       <Route path="/teacher" component={TeacherPortal} />
       <Route path="/parent" component={ParentPortal} />
+
+      {/* Onboarding & Configuration */}
+      <Route path="/onboard" component={OnboardingWizard} />
+      <Route path="/institute-config" component={InstituteConfig} />
 
       {/* Fallback */}
       <Route path="/404" component={NotFound} />

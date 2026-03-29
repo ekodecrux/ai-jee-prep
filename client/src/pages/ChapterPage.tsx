@@ -5,11 +5,14 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import AvatarTutor from "@/components/AvatarTutor";
 import {
   BookOpen, Target, Zap, Clock, ChevronLeft, Star, Lock,
   RefreshCw, CheckCircle, AlertCircle, Loader2, BookMarked,
-  FileQuestion, BarChart3, Lightbulb, ArrowRight
+  FileQuestion, BarChart3, Lightbulb, ArrowRight, Mic, Play,
+  Timer, Calendar, Volume2
 } from "lucide-react";
 
 export default function ChapterPage() {
@@ -18,6 +21,42 @@ export default function ChapterPage() {
   const [activeTab, setActiveTab] = useState("narration");
   const [isGenerating, setIsGenerating] = useState(false);
   const [questionFilter, setQuestionFilter] = useState<{ difficulty?: string; type?: string; exam?: string }>({});
+  const [lessonMode, setLessonMode] = useState<"full" | "short" | "exam">("full");
+  const [narrationSpeed, setNarrationSpeed] = useState<0.75 | 1 | 1.25 | 1.5>(1);
+  const [avatarMode, setAvatarMode] = useState<"lesson" | "doubt" | "welcome">("welcome");
+  const [showAvatar, setShowAvatar] = useState(false);
+  const [highlightedSection, setHighlightedSection] = useState<string | null>(null);
+  const [isNarrating, setIsNarrating] = useState(false);
+
+  const LESSON_MODES = [
+    { key: "full" as const, label: "Full Lesson", duration: "30 min", icon: BookOpen, desc: "Complete narration with all concepts" },
+    { key: "short" as const, label: "Quick Recap", duration: "15 min", icon: Timer, desc: "Key concepts only — weekday revision" },
+    { key: "exam" as const, label: "Exam Mode", duration: "60 min", icon: Target, desc: "Weekend deep-dive with practice" },
+  ];
+
+  const NARRATION_SECTIONS = [
+    { key: "introduction", label: "Introduction" },
+    { key: "conceptualExplanation", label: "Conceptual Explanation" },
+    { key: "formulasAndDerivations", label: "Formulas & Derivations" },
+    { key: "solvedExamples", label: "Solved Examples" },
+    { key: "advancedConcepts", label: "Advanced Concepts" },
+    { key: "examSpecificTips", label: "JEE Exam Tips" },
+    { key: "commonMistakes", label: "Common Mistakes" },
+    { key: "quickRevisionSummary", label: "Quick Revision Summary" },
+    { key: "mnemonics", label: "Mnemonics & Memory Aids" },
+  ];
+
+  const handleStartNarration = (section: string) => {
+    setHighlightedSection(section);
+    setIsNarrating(true);
+    setShowAvatar(true);
+    setAvatarMode("lesson");
+  };
+
+  const handleStopNarration = () => {
+    setHighlightedSection(null);
+    setIsNarrating(false);
+  };
 
   const { data: chapter, isLoading: chapterLoading } = trpc.chapters.getById.useQuery({ chapterId });
   const { data: narration, isLoading: narrationLoading, refetch: refetchNarration } = trpc.content.getNarration.useQuery({ chapterId });
@@ -237,16 +276,61 @@ export default function ChapterPage() {
                   </div>
                 </div>
 
+                {/* Lesson Mode Selector */}
+                <div className="flex flex-wrap gap-2 mb-6 p-3 bg-muted/20 rounded-xl border border-border/50">
+                  <span className="text-xs text-muted-foreground self-center mr-1">Mode:</span>
+                  {LESSON_MODES.map(m => (
+                    <button key={m.key} onClick={() => setLessonMode(m.key)}
+                      className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                        lessonMode === m.key ? "border-primary bg-primary/20 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+                      }`}>
+                      <m.icon className="w-3 h-3" />
+                      <span className="font-medium">{m.label}</span>
+                      <span className="opacity-60">{m.duration}</span>
+                    </button>
+                  ))}
+                  <div className="w-px bg-border mx-1" />
+                  <span className="text-xs text-muted-foreground self-center">Speed:</span>
+                  {([0.75, 1, 1.25, 1.5] as const).map(s => (
+                    <button key={s} onClick={() => setNarrationSpeed(s)}
+                      className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
+                        narrationSpeed === s ? "border-primary bg-primary/20 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+                      }`}>{s}×</button>
+                  ))}
+                  <div className="ml-auto">
+                    <Button size="sm" variant="outline" onClick={() => { setShowAvatar(true); setAvatarMode("lesson"); }} className="gap-1.5 text-xs">
+                      <Volume2 className="w-3 h-3" /> Ask Priya
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="narration-content prose prose-invert max-w-none space-y-4">
-                  {narration.introduction && <div><h2>Introduction</h2><p>{narration.introduction}</p></div>}
-                  {narration.conceptualExplanation && <div><h2>Conceptual Explanation</h2><p>{narration.conceptualExplanation}</p></div>}
-                  {narration.formulasAndDerivations && <div><h2>Formulas & Derivations</h2><p>{narration.formulasAndDerivations}</p></div>}
-                  {narration.solvedExamples && <div><h2>Solved Examples</h2><p>{narration.solvedExamples}</p></div>}
-                  {narration.advancedConcepts && <div><h2>Advanced Concepts</h2><p>{narration.advancedConcepts}</p></div>}
-                  {narration.examSpecificTips && <div><h2>JEE Exam Tips</h2><p>{narration.examSpecificTips}</p></div>}
-                  {narration.commonMistakes && <div><h2>Common Mistakes</h2><p>{narration.commonMistakes}</p></div>}
-                  {narration.quickRevisionSummary && <div><h2>Quick Revision Summary</h2><p>{narration.quickRevisionSummary}</p></div>}
-                  {narration.mnemonics && <div><h2>Mnemonics & Memory Aids</h2><p>{narration.mnemonics}</p></div>}
+                  {NARRATION_SECTIONS.filter(s => {
+                    if (lessonMode === "short") return ["introduction", "conceptualExplanation", "quickRevisionSummary"].includes(s.key);
+                    if (lessonMode === "exam") return true;
+                    return true;
+                  }).map(s => {
+                    const content = (narration as any)[s.key];
+                    if (!content) return null;
+                    const isHighlighted = highlightedSection === s.key;
+                    return (
+                      <div key={s.key} id={`section-${s.key}`}
+                        className={`rounded-xl p-4 transition-all duration-500 ${
+                          isHighlighted ? "bg-primary/10 border border-primary/40 shadow-lg shadow-primary/10" : "hover:bg-muted/20"
+                        }`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <h2 className="text-lg font-bold text-foreground m-0">{s.label}</h2>
+                          <button onClick={() => isNarrating && highlightedSection === s.key ? handleStopNarration() : handleStartNarration(s.key)}
+                            className={`text-xs flex items-center gap-1 px-2 py-1 rounded-lg border transition-all ${
+                              isHighlighted ? "border-primary bg-primary/20 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+                            }`}>
+                            {isHighlighted ? <><Play className="w-3 h-3" /> Narrating...</> : <><Volume2 className="w-3 h-3" /> Listen</>}
+                          </button>
+                        </div>
+                        <p className="text-muted-foreground leading-relaxed m-0">{content}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
@@ -435,6 +519,28 @@ export default function ChapterPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* AI Avatar Tutor - Priya */}
+      {showAvatar && chapter && (
+        <AvatarTutor
+          chapterId={chapterId}
+          chapterTitle={chapter.title}
+          context={`Chapter: ${chapter.title}. Subject: ${chapter.subject?.name}. Class: ${chapter.curriculumId === "ncert_class11" ? "11" : "12"}.`}
+          mode={avatarMode}
+          onClose={() => { setShowAvatar(false); handleStopNarration(); }}
+        />
+      )}
+
+      {/* Floating Ask Priya button when avatar is hidden */}
+      {!showAvatar && chapter && (
+        <button
+          onClick={() => { setShowAvatar(true); setAvatarMode("doubt"); }}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-primary text-primary-foreground rounded-full px-4 py-3 shadow-lg hover:shadow-primary/30 hover:scale-105 transition-all duration-200 text-sm font-medium"
+        >
+          <Mic className="w-4 h-4" />
+          Ask Priya
+        </button>
+      )}
     </Layout>
   );
 }

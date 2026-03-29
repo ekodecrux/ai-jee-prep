@@ -370,3 +370,114 @@
 - [ ] Standalone students get full platform access (no institute branding)
 - [ ] Standalone plan: free tier (10 chapters) + premium tier (all 80 chapters)
 - [ ] Parent dashboard shows child's progress without institute affiliation
+
+## Phase 16: Multi-Tenant Authentication System
+
+### Schema Extensions
+- [x] inviteTokens table: token (uuid), email, role, instituteId, classId, invitedBy, expiresAt, usedAt, isUsed
+- [ ] instituteSettings table: instituteId, brandColor, logoUrl, customDomain, maxStudents, subscriptionPlan, subscriptionExpiry
+- [ ] roleSessions table: userId, role, instituteId, lastActiveAt (for audit trail)
+
+### Backend Auth Middleware
+- [x] requireRole(roles[]) middleware: checks ctx.user.role against allowed roles
+- [x] requireInstituteAccess middleware: ensures user belongs to the institute they are accessing
+- [x] inviteRouter: createInvite, validateInvite, acceptInvite, listPendingInvites, revokeInvite
+- [ ] onboardingRouter: completeProfile, setRole, linkToInstitute, linkParentToStudent
+- [ ] Institute-scoped data isolation: all queries filtered by instituteId for institute_admin/teacher/student/parent
+
+### Frontend Auth Guards
+- [x] RoleGuard component: wraps routes, redirects unauthorized users to correct portal
+- [ ] useRoleAuth() hook: returns { role, instituteId, canAccess(route) }
+- [x] Post-login redirect: super_admin → /super-admin, institute_admin → /institute-admin, teacher → /teacher, student → /dashboard, parent → /parent
+- [x] Onboarding wizard: new users without role → /onboarding → select role → complete profile
+- [x] Invite acceptance page: /invite/:token → validates token → creates account → assigns role
+
+### Onboarding Flows
+- [ ] Super Admin: onboard institute form (name, contact, plan, admin email) → sends invite to institute admin
+- [ ] Institute Admin: bulk CSV student upload, individual teacher/parent invite with email
+- [ ] Teacher: accept invite → set profile → see assigned classes
+- [ ] Student: self-enroll or accept invite → set profile (grade, target year, school)
+- [ ] Parent: enroll child (enter child's student ID or email) → link account → access parent portal
+
+## Phase 17: Gap Closures
+
+### Avatar Integration
+- [x] Embed AvatarTutor in ChapterPage (bottom-right floating, collapsible)
+- [x] Avatar auto-starts narrating when student opens narration tab
+- [ ] Avatar listens for doubts during lesson
+- [ ] Speed controls: 0.75x / 1x / 1.25x / 1.5x on avatar narration
+- [ ] Sentence-by-sentence highlighted text scroll as avatar speaks
+
+### Lesson Mode Selector
+- [ ] 30-min Lesson Mode: condensed narration, key concepts, avatar narrates
+- [ ] 15-min Weekday Exam Mode: 10 questions, timed, JEE pattern
+- [ ] 60-min Weekend Exam Mode: 30 questions, 3 subjects, full JEE pattern
+- [ ] Mode selector UI in chapter page and study plan
+
+### Admin Bulk Generation UI
+- [x] "Generate All 80 Chapters" button in Institute Admin portal
+- [x] Real-time progress tracker: per-chapter status (pending/generating/done/error)
+- [ ] Individual chapter regenerate button
+
+### Automated Notification Triggers
+- [x] Server-side daily check: overdue lessons → create notifications
+- [x] Mock test unlock check: scheduledUnlockDate passes → notify student
+- [ ] Streak at risk: no activity in 24h → notify
+- [ ] Weak chapter alert: score < 60% after 2 attempts → notify
+- [ ] Plan behind alert: missed > 3 days → notify
+
+### Real Face Detection
+- [ ] Integrate face-api.js (CDN) in ProctoredExam
+- [ ] Real face detection: no face → warning, multiple faces → warning
+- [ ] Gaze estimation: looking away repeatedly → flag
+
+### Teacher Assessment Builder
+- [ ] Pick questions from question bank by chapter/type/difficulty
+- [ ] Set timer, assign to class, schedule date
+- [ ] View results per student
+
+### Parent-Teacher Avatar Interaction
+- [ ] Parent portal "Ask About My Child" → avatar proxy answers from child's data
+
+## Phase 17: Exam-Agnostic Admin Configuration Panel
+
+### Exam Registry (pre-seeded, extensible)
+- [ ] JEE Main — Engineering entrance, MCQ+NAT, 3 hrs, 300 marks
+- [ ] JEE Advanced — Engineering (IIT), MCQ+NAT+Integer+Multi-correct, 3 hrs x2 papers
+- [ ] NEET UG — Medical entrance, MCQ, 3 hrs 20 min, 720 marks
+- [ ] GATE — Graduate engineering, MCQ+NAT, 3 hrs, 100 marks
+- [ ] UPSC CSE — Civil services, subjective+MCQ, multiple stages
+- [ ] CBSE Board Class 11 — Academic, MCQ+subjective
+- [ ] CBSE Board Class 12 — Academic, MCQ+subjective
+- [ ] State Board Class 11/12 — Academic (configurable per state)
+- [ ] Custom Exam — Institute can define their own exam pattern
+
+### Institute Admin Configuration Panel (7-Step Wizard)
+- [x] Step 1: Select Exam(s) — multi-select from exam registry with descriptions
+- [x] Step 2: Select Academic Curriculum — NCERT / CBSE / State Board / Custom
+- [x] Step 3: Select Class Level — Class 11 only / Class 12 only / Both (11+12 integrated)
+- [x] Step 4: Configure Study Duration — 12 months / 20 months / 24 months / Custom
+- [x] Step 5: Configure Session Modes — enable/disable: 30-min lesson / 15-min weekday exam / 60-min weekend exam
+- [x] Step 6: Configure Mock Test Schedule — auto-generate based on exam date + duration
+- [x] Step 7: Review & Activate — shows summary of chapters, assessments, mock tests that will be auto-configured
+- [ ] On Activate: platform auto-configures chapters, study plan, assessments, mock tests for all enrolled students
+
+### Auto-Configuration Engine (triggered on Activate)
+- [ ] Filter chapters by selected exam syllabus and assign to institute
+- [ ] Set chapter ordering based on selected curriculum (NCERT flow)
+- [ ] Generate monthly study plan with Indian holidays for selected duration
+- [ ] Configure lesson duration limits per session mode
+- [ ] Pre-create mock test schedule with unlock dates
+- [ ] All student workflows auto-adapt: heatmap thresholds, score prediction, notifications
+
+### Exam-Aware Student Experience
+- [ ] Student dashboard shows only chapters relevant to institute's selected exam(s)
+- [ ] Assessment questions filtered by exam type (JEE Main vs JEE Advanced vs NEET pattern)
+- [ ] Mock tests follow selected exam's actual paper pattern (marks, duration, question types)
+- [ ] Score prediction calibrated to selected exam (JEE Main 300 / NEET 720 / GATE 100)
+- [ ] Heatmap color thresholds configurable per exam (80% for JEE, 70% for NEET)
+
+### Teacher & Parent Visibility
+- [ ] Teachers see only chapters/assessments for their institute's configured exam
+- [ ] Parents see child's progress in context of selected exam
+- [ ] Notifications reference the specific exam name

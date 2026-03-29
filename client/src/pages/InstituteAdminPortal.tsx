@@ -4,7 +4,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Users, BookOpen, Upload, Plus, GraduationCap, UserCheck,
   BarChart3, Bell, Key, FileText, ChevronRight, Download,
-  School, Calendar, ClipboardList, Settings, AlertCircle
+  School, Calendar, ClipboardList, Settings, AlertCircle,
+  Zap, CheckCircle2, Loader2, RefreshCw
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,27 @@ export default function InstituteAdminPortal() {
   const { data: stats } = trpc.admin.getDashboardStats.useQuery();
   const { data: roster } = trpc.admin.getStudentRoster.useQuery({ limit: 10, offset: 0 });
   const { data: mockSchedule } = trpc.admin.getMockTestSchedule.useQuery();
+
+  // Bulk generation state
+  const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; chapter: string; done: boolean } | null>(null);
+  const generateContent = trpc.content.generateContent.useMutation();
+  const { data: allChapters } = trpc.chapters.listAll.useQuery({ examId: "jee_main" });
+
+  const handleBulkGenerate = async (_type: "narration" | "questions" | "assessment") => {
+    const chapList = allChapters || [];
+    if (chapList.length === 0) { toast.error("No chapters found"); return; }
+    setBulkProgress({ current: 0, total: chapList.length, chapter: "", done: false });
+    let done = 0;
+    for (const ch of chapList) {
+      setBulkProgress({ current: done, total: chapList.length, chapter: ch.title, done: false });
+      try {
+        await generateContent.mutateAsync({ chapterId: ch.chapterId });
+      } catch { /* skip errors, continue */ }
+      done++;
+    }
+    setBulkProgress({ current: done, total: chapList.length, chapter: "Complete!", done: true });
+    toast.success(`Bulk generation complete for all ${done} chapters!`);
+  };
 
   const handleUpload = (e: React.DragEvent | React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
@@ -73,10 +95,11 @@ export default function InstituteAdminPortal() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-muted mb-6">
+          <TabsList className="bg-muted mb-6 flex-wrap h-auto gap-1">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
             <TabsTrigger value="content">Content Upload</TabsTrigger>
+            <TabsTrigger value="bulk">Bulk Generate</TabsTrigger>
             <TabsTrigger value="schedule">Mock Schedule</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
@@ -228,6 +251,110 @@ export default function InstituteAdminPortal() {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          {/* Bulk Content Generation */}
+          <TabsContent value="bulk" className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground mb-1">Bulk Content Pre-Generation</h2>
+              <p className="text-sm text-muted-foreground">Pre-generate all narration scripts, past questions, and assessments for all 80 chapters so students never see a loading screen. This runs in the background and may take 10–20 minutes.</p>
+            </div>
+
+            {bulkProgress && (
+              <Card className="border-amber-500/30 bg-amber-500/5">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    {bulkProgress.done
+                      ? <CheckCircle2 className="w-5 h-5 text-green-400" />
+                      : <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />}
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">
+                        {bulkProgress.done ? "Generation Complete!" : `Generating: ${bulkProgress.chapter}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{bulkProgress.current} / {bulkProgress.total} chapters</p>
+                    </div>
+                    <span className="text-sm font-bold text-amber-400">
+                      {Math.round((bulkProgress.current / bulkProgress.total) * 100)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className="h-2 rounded-full bg-gradient-to-r from-amber-500 to-green-500 transition-all duration-300"
+                      style={{ width: `${Math.round((bulkProgress.current / bulkProgress.total) * 100)}%` }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="grid lg:grid-cols-3 gap-6">
+              {[
+                {
+                  type: "narration" as const,
+                  title: "Teacher Narration Scripts",
+                  desc: "Generate comprehensive 3000+ word narration scripts for all 80 chapters with concepts, examples, and problem-solving approaches.",
+                  icon: BookOpen,
+                  color: "text-blue-400",
+                  bg: "bg-blue-400/10",
+                  time: "~15 min",
+                },
+                {
+                  type: "questions" as const,
+                  title: "Past Year Questions",
+                  desc: "Generate 10 years of JEE Main + Advanced questions (MCQ, NAT, Integer) with detailed solutions for all 80 chapters.",
+                  icon: ClipboardList,
+                  color: "text-purple-400",
+                  bg: "bg-purple-400/10",
+                  time: "~20 min",
+                },
+                {
+                  type: "assessment" as const,
+                  title: "Chapter Assessments",
+                  desc: "Generate adaptive chapter-wise assessments with mixed difficulty (Easy/Medium/Hard) for all 80 chapters.",
+                  icon: Zap,
+                  color: "text-green-400",
+                  bg: "bg-green-400/10",
+                  time: "~10 min",
+                },
+              ].map((item) => (
+                <Card key={item.type} className="border-border bg-card">
+                  <CardContent className="p-6">
+                    <div className={`w-12 h-12 rounded-xl ${item.bg} flex items-center justify-center mb-4`}>
+                      <item.icon className={`w-6 h-6 ${item.color}`} />
+                    </div>
+                    <h3 className="font-semibold text-foreground mb-2">{item.title}</h3>
+                    <p className="text-xs text-muted-foreground mb-4">{item.desc}</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <Badge variant="outline" className="text-xs">{item.time}</Badge>
+                      <Badge variant="outline" className="text-xs">80 chapters</Badge>
+                    </div>
+                    <Button
+                      className="w-full gap-2"
+                      size="sm"
+                      disabled={bulkProgress !== null && !bulkProgress.done}
+                      onClick={() => handleBulkGenerate(item.type)}
+                    >
+                      {bulkProgress && !bulkProgress.done
+                        ? <><Loader2 className="w-3 h-3 animate-spin" /> Running...</>
+                        : <><RefreshCw className="w-3 h-3" /> Generate All</>
+                      }
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Generation Notes</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-muted-foreground">
+                <p>• Content is generated using the built-in AI engine and stored in the database permanently.</p>
+                <p>• Students can also trigger on-demand generation for individual chapters if pre-generation hasn't run.</p>
+                <p>• Re-running generation will update existing content — useful after syllabus changes.</p>
+                <p>• Generation runs sequentially to avoid rate limits. Do not close this tab while running.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Mock Schedule */}
