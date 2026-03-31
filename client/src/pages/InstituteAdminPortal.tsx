@@ -5,27 +5,75 @@ import {
   Users, BookOpen, Upload, Plus, GraduationCap, UserCheck,
   BarChart3, Bell, Key, FileText, ChevronRight, Download,
   School, Calendar, ClipboardList, Settings, AlertCircle,
-  Zap, CheckCircle2, Loader2, RefreshCw
+  Zap, CheckCircle2, Loader2, RefreshCw, Link2, BookMarked,
+  UserX, UserCheck2, Pencil, Trash2, Search
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+
+// ─── Institute context — in a real app this comes from user's session/membership
+// For now we use the first institute the admin belongs to (or a hardcoded demo)
+const DEMO_INSTITUTE_ID = 1; // Will be replaced by real membership lookup
 
 export default function InstituteAdminPortal() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [dragOver, setDragOver] = useState(false);
+  const [instituteId] = useState(DEMO_INSTITUTE_ID);
 
-  const { data: stats } = trpc.admin.getDashboardStats.useQuery();
-  const { data: roster } = trpc.admin.getStudentRoster.useQuery({ limit: 10, offset: 0 });
-  const { data: mockSchedule } = trpc.admin.getMockTestSchedule.useQuery();
+  // ── ERP Queries ──────────────────────────────────────────────────────────
+  const members = trpc.erp.listInstituteMembers.useQuery({ instituteId });
+  const teachers = trpc.erp.listInstituteMembers.useQuery({ instituteId, role: "teacher" });
+  const students = trpc.erp.listInstituteMembers.useQuery({ instituteId, role: "student" });
+  const parents = trpc.erp.listInstituteMembers.useQuery({ instituteId, role: "parent" });
+  const classes = trpc.erp.listClasses.useQuery({ instituteId });
+  const subjects = trpc.erp.listSubjects.useQuery({ instituteId });
+  const teacherMappings = trpc.erp.listTeacherMappings.useQuery({ instituteId });
 
-  // Bulk generation state
+  // ── ERP Mutations ─────────────────────────────────────────────────────────
+  const inviteMember = trpc.erp.inviteMember.useMutation({
+    onSuccess: () => { toast.success("Invite sent!"); members.refetch(); teachers.refetch(); students.refetch(); parents.refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const createClass = trpc.erp.createClass.useMutation({
+    onSuccess: () => { toast.success("Class created!"); classes.refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const createSubject = trpc.erp.createSubject.useMutation({
+    onSuccess: () => { toast.success("Subject created!"); subjects.refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const assignTeacher = trpc.erp.assignTeacherToClassSubject.useMutation({
+    onSuccess: () => { toast.success("Teacher assigned!"); teacherMappings.refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const deactivateMember = trpc.erp.deactivateMember.useMutation({
+    onSuccess: () => { toast.success("Member deactivated"); members.refetch(); teachers.refetch(); students.refetch(); parents.refetch(); },
+  });
+
+  // ── Form states ───────────────────────────────────────────────────────────
+  const [inviteForm, setInviteForm] = useState({ email: "", name: "", role: "student" as "teacher" | "student" | "parent", classId: "" });
+  const [classForm, setClassForm] = useState({ name: "", grade: "11" as "11" | "12" | "dropper" | "integrated", academicYear: "2025-26", examFocus: "jee_main", maxStudents: 60 });
+  const [subjectForm, setSubjectForm] = useState({ name: "", code: "", colorHex: "#6366f1" });
+  const [mappingForm, setMappingForm] = useState({ teacherId: "", classId: "", subjectId: "" });
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [showClassDialog, setShowClassDialog] = useState(false);
+  const [showSubjectDialog, setShowSubjectDialog] = useState(false);
+  const [showMappingDialog, setShowMappingDialog] = useState(false);
+
+  // Legacy state
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; chapter: string; done: boolean } | null>(null);
   const generateContent = trpc.content.generateContent.useMutation();
   const { data: allChapters } = trpc.chapters.listAll.useQuery({ examId: "jee_main" });
+  const { data: stats } = trpc.admin.getDashboardStats.useQuery();
+  const { data: mockSchedule } = trpc.admin.getMockTestSchedule.useQuery();
 
   const handleBulkGenerate = async (_type: "narration" | "questions" | "assessment") => {
     const chapList = allChapters || [];
@@ -34,9 +82,7 @@ export default function InstituteAdminPortal() {
     let done = 0;
     for (const ch of chapList) {
       setBulkProgress({ current: done, total: chapList.length, chapter: ch.title, done: false });
-      try {
-        await generateContent.mutateAsync({ chapterId: ch.chapterId });
-      } catch { /* skip errors, continue */ }
+      try { await generateContent.mutateAsync({ chapterId: ch.chapterId }); } catch { }
       done++;
     }
     setBulkProgress({ current: done, total: chapList.length, chapter: "Complete!", done: true });
@@ -94,13 +140,132 @@ export default function InstituteAdminPortal() {
           ))}
         </div>
 
+        {/* ERP Dialogs */}
+        <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Invite Member</DialogTitle></DialogHeader>
+            <div className="space-y-3 pt-2">
+              <div><Label>Role</Label>
+                <Select value={inviteForm.role} onValueChange={(v: any) => setInviteForm(f => ({ ...f, role: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="teacher">Teacher</SelectItem>
+                    <SelectItem value="parent">Parent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Full Name *</Label><Input placeholder="e.g. Arjun Sharma" value={inviteForm.name} onChange={e => setInviteForm(f => ({ ...f, name: e.target.value }))} /></div>
+              <div><Label>Email *</Label><Input type="email" placeholder="arjun@email.com" value={inviteForm.email} onChange={e => setInviteForm(f => ({ ...f, email: e.target.value }))} /></div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowInviteDialog(false)}>Cancel</Button>
+                <Button disabled={inviteMember.isPending} onClick={() => {
+                  if (!inviteForm.name || !inviteForm.email) { toast.error("Name and email required"); return; }
+                  inviteMember.mutate({ instituteId, email: inviteForm.email, name: inviteForm.name, role: inviteForm.role });
+                  setShowInviteDialog(false);
+                }}>{inviteMember.isPending ? "Sending..." : "Send Invite"}</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showClassDialog} onOpenChange={setShowClassDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Create Class</DialogTitle></DialogHeader>
+            <div className="space-y-3 pt-2">
+              <div><Label>Class Name *</Label><Input placeholder="e.g. Class 11 - Batch A" value={classForm.name} onChange={e => setClassForm(f => ({ ...f, name: e.target.value }))} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Grade</Label>
+                  <Select value={classForm.grade} onValueChange={(v: any) => setClassForm(f => ({ ...f, grade: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="11">Grade 11</SelectItem>
+                      <SelectItem value="12">Grade 12</SelectItem>
+                      <SelectItem value="dropper">Dropper</SelectItem>
+                      <SelectItem value="integrated">Integrated</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Max Students</Label><Input type="number" value={classForm.maxStudents} onChange={e => setClassForm(f => ({ ...f, maxStudents: Number(e.target.value) }))} /></div>
+              </div>
+              <div><Label>Academic Year</Label><Input value={classForm.academicYear} onChange={e => setClassForm(f => ({ ...f, academicYear: e.target.value }))} /></div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowClassDialog(false)}>Cancel</Button>
+                <Button disabled={createClass.isPending} onClick={() => {
+                  if (!classForm.name) { toast.error("Class name required"); return; }
+                  createClass.mutate({ instituteId, ...classForm });
+                  setShowClassDialog(false);
+                }}>{createClass.isPending ? "Creating..." : "Create Class"}</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showSubjectDialog} onOpenChange={setShowSubjectDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Create Subject</DialogTitle></DialogHeader>
+            <div className="space-y-3 pt-2">
+              <div><Label>Subject Name *</Label><Input placeholder="e.g. Physics" value={subjectForm.name} onChange={e => setSubjectForm(f => ({ ...f, name: e.target.value }))} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Code</Label><Input placeholder="PHY" value={subjectForm.code} onChange={e => setSubjectForm(f => ({ ...f, code: e.target.value }))} /></div>
+                <div><Label>Color</Label><Input type="color" value={subjectForm.colorHex} onChange={e => setSubjectForm(f => ({ ...f, colorHex: e.target.value }))} /></div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowSubjectDialog(false)}>Cancel</Button>
+                <Button disabled={createSubject.isPending} onClick={() => {
+                  if (!subjectForm.name) { toast.error("Subject name required"); return; }
+                  createSubject.mutate({ instituteId, ...subjectForm });
+                  setShowSubjectDialog(false);
+                }}>{createSubject.isPending ? "Creating..." : "Create Subject"}</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showMappingDialog} onOpenChange={setShowMappingDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Assign Teacher to Class &amp; Subject</DialogTitle></DialogHeader>
+            <div className="space-y-3 pt-2">
+              <div><Label>Teacher</Label>
+                <Select value={mappingForm.teacherId} onValueChange={v => setMappingForm(f => ({ ...f, teacherId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select teacher" /></SelectTrigger>
+                  <SelectContent>{(teachers.data ?? []).map(t => <SelectItem key={t.userId} value={String(t.userId)}>{t.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div><Label>Class</Label>
+                <Select value={mappingForm.classId} onValueChange={v => setMappingForm(f => ({ ...f, classId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                  <SelectContent>{(classes.data ?? []).map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div><Label>Subject</Label>
+                <Select value={mappingForm.subjectId} onValueChange={v => setMappingForm(f => ({ ...f, subjectId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectContent>{(subjects.data ?? []).map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowMappingDialog(false)}>Cancel</Button>
+                <Button disabled={assignTeacher.isPending} onClick={() => {
+                  if (!mappingForm.teacherId || !mappingForm.classId || !mappingForm.subjectId) { toast.error("All fields required"); return; }
+                  assignTeacher.mutate({ instituteId, teacherId: Number(mappingForm.teacherId), classId: Number(mappingForm.classId), subjectId: Number(mappingForm.subjectId) });
+                  setShowMappingDialog(false);
+                }}>{assignTeacher.isPending ? "Assigning..." : "Assign"}</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-muted mb-6 flex-wrap h-auto gap-1">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="users">Users ({members.data?.length ?? 0})</TabsTrigger>
+            <TabsTrigger value="classes">Classes ({classes.data?.length ?? 0})</TabsTrigger>
+            <TabsTrigger value="subjects">Subjects ({subjects.data?.length ?? 0})</TabsTrigger>
+            <TabsTrigger value="mappings">Teacher Mapping</TabsTrigger>
             <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
             <TabsTrigger value="content">Content Upload</TabsTrigger>
             <TabsTrigger value="bulk">Bulk Generate</TabsTrigger>
-            <TabsTrigger value="schedule">Mock Schedule</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
 
@@ -138,10 +303,10 @@ export default function InstituteAdminPortal() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {roster?.students && roster.students.length > 0 ? (
+                  {students.data && students.data.length > 0 ? (
                     <div className="space-y-2">
-                      {roster.students.slice(0, 5).map((s: any) => (
-                        <div key={s.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
+                      {students.data.slice(0, 5).map((s) => (
+                        <div key={s.memberId} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
                           <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-semibold text-foreground">
                             {(s.name || "S")[0].toUpperCase()}
                           </div>
@@ -162,6 +327,206 @@ export default function InstituteAdminPortal() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* ── Users Tab ── */}
+          <TabsContent value="users" className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">User Management</h2>
+                <p className="text-sm text-muted-foreground">Teachers, students, and parents in your institute</p>
+              </div>
+              <Button size="sm" className="gap-2" onClick={() => setShowInviteDialog(true)}>
+                <Plus className="w-4 h-4" /> Invite Member
+              </Button>
+            </div>
+
+            {/* Role summary cards */}
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: "Teachers", data: teachers.data, icon: UserCheck, color: "text-green-500", bg: "bg-green-50" },
+                { label: "Students", data: students.data, icon: GraduationCap, color: "text-blue-500", bg: "bg-blue-50" },
+                { label: "Parents", data: parents.data, icon: Users, color: "text-amber-500", bg: "bg-amber-50" },
+              ].map((r) => (
+                <Card key={r.label} className="border-border bg-card">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl ${r.bg} flex items-center justify-center`}>
+                      <r.icon className={`w-5 h-5 ${r.color}`} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-foreground">{r.data?.length ?? 0}</p>
+                      <p className="text-xs text-muted-foreground">{r.label}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Full member list */}
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-3"><CardTitle className="text-base">All Members</CardTitle></CardHeader>
+              <CardContent className="p-0">
+                {members.isLoading && <div className="text-center py-8 text-muted-foreground">Loading...</div>}
+                {(members.data ?? []).length === 0 && !members.isLoading && (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No members yet. Invite your first teacher or student.</p>
+                  </div>
+                )}
+                <div className="divide-y divide-border">
+                  {(members.data ?? []).map((m) => (
+                    <div key={m.memberId} className="flex items-center justify-between px-5 py-3 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                          {(m.name || "?")[0].toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{m.name || "—"}</p>
+                          <p className="text-xs text-muted-foreground">{m.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`text-xs capitalize ${
+                          m.role === "teacher" ? "text-green-600 border-green-300" :
+                          m.role === "student" ? "text-blue-600 border-blue-300" :
+                          "text-amber-600 border-amber-300"
+                        }`}>{m.role}</Badge>
+                        <Badge variant={m.isActive ? "default" : "secondary"} className="text-xs">
+                          {m.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                        {m.isActive && (
+                          <Button variant="ghost" size="sm" className="text-xs text-red-500 hover:text-red-600"
+                            onClick={() => deactivateMember.mutate({ memberId: m.memberId, instituteId })}>
+                            <UserX className="w-3 h-3 mr-1" /> Deactivate
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── Classes Tab ── */}
+          <TabsContent value="classes" className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Class Management</h2>
+                <p className="text-sm text-muted-foreground">Create and manage classes/batches for your institute</p>
+              </div>
+              <Button size="sm" className="gap-2" onClick={() => setShowClassDialog(true)}>
+                <Plus className="w-4 h-4" /> Create Class
+              </Button>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {classes.isLoading && <div className="col-span-3 text-center py-8 text-muted-foreground">Loading...</div>}
+              {(classes.data ?? []).map((cls) => (
+                <Card key={cls.id} className="border-border bg-card">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="font-semibold text-foreground">{cls.name}</p>
+                        <p className="text-xs text-muted-foreground">Grade {cls.grade} · {cls.academicYear}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">Max {cls.maxStudents}</Badge>
+                    </div>
+                    {cls.teacherName && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <UserCheck className="w-3 h-3" /> {cls.teacherName}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+              {!classes.isLoading && !(classes.data?.length) && (
+                <Card className="col-span-3 border-dashed border-border">
+                  <CardContent className="py-12 text-center">
+                    <BookOpen className="w-10 h-10 mx-auto mb-2 opacity-30 text-muted-foreground" />
+                    <p className="text-muted-foreground text-sm">No classes yet. Create your first class.</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* ── Subjects Tab ── */}
+          <TabsContent value="subjects" className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Subject Management</h2>
+                <p className="text-sm text-muted-foreground">Define subjects taught at your institute</p>
+              </div>
+              <Button size="sm" className="gap-2" onClick={() => setShowSubjectDialog(true)}>
+                <Plus className="w-4 h-4" /> Add Subject
+              </Button>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {(subjects.data ?? []).map((sub) => (
+                <Card key={sub.id} className="border-border bg-card">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: (sub.colorHex || "#6366f1") + "22" }}>
+                      <BookMarked className="w-5 h-5" style={{ color: sub.colorHex || "#6366f1" }} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">{sub.name}</p>
+                      {sub.code && <p className="text-xs text-muted-foreground">{sub.code}</p>}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {!subjects.isLoading && !(subjects.data?.length) && (
+                <Card className="col-span-4 border-dashed border-border">
+                  <CardContent className="py-12 text-center">
+                    <BookMarked className="w-10 h-10 mx-auto mb-2 opacity-30 text-muted-foreground" />
+                    <p className="text-muted-foreground text-sm">No subjects yet. Add Physics, Chemistry, Maths etc.</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* ── Teacher Mapping Tab ── */}
+          <TabsContent value="mappings" className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Teacher ↔ Class ↔ Subject Mapping</h2>
+                <p className="text-sm text-muted-foreground">Assign teachers to specific classes and subjects</p>
+              </div>
+              <Button size="sm" className="gap-2" onClick={() => setShowMappingDialog(true)}>
+                <Link2 className="w-4 h-4" /> Assign Teacher
+              </Button>
+            </div>
+            <Card className="border-border bg-card">
+              <CardContent className="p-0">
+                {teacherMappings.isLoading && <div className="text-center py-8 text-muted-foreground">Loading...</div>}
+                {(teacherMappings.data ?? []).length === 0 && !teacherMappings.isLoading && (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <Link2 className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No mappings yet. Assign teachers to classes and subjects.</p>
+                  </div>
+                )}
+                <div className="divide-y divide-border">
+                  {(teacherMappings.data ?? []).map((m) => (
+                    <div key={m.id} className="flex items-center justify-between px-5 py-3">
+                      <div className="flex items-center gap-4">
+                        <div className="w-9 h-9 rounded-full bg-green-50 flex items-center justify-center text-sm font-semibold text-green-600">
+                          {(m.teacherName || "T")[0].toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{m.teacherName || "—"}</p>
+                          <p className="text-xs text-muted-foreground">{m.className} · {m.subjectName}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">{m.subjectName}</Badge>
+                        <Badge variant="outline" className="text-xs">{m.className}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Onboarding */}

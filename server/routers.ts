@@ -11,6 +11,7 @@ import { proctoringRouter } from "./routers/proctoring";
 import { analyticsRouter } from "./routers/analytics";
 import { lessonPlanRouter } from "./routers/lessonPlan";
 import { notificationsRouter } from "./routers/notifications";
+import { erpRouter } from "./routers/erp";
 
 export const appRouter = router({
   system: systemRouter,
@@ -31,6 +32,7 @@ export const appRouter = router({
   lessonPlan: lessonPlanRouter,
   notifications: notificationsRouter,
   authExt: authExtRouter,
+  erp: erpRouter,
 });
 
 export type AppRouter = typeof appRouter;

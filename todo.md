@@ -489,3 +489,71 @@
 - [x] Each script has 9 sections: Introduction, Conceptual Explanation, Formulas & Derivations, Solved Examples, Advanced Concepts, Exam Tips, Common Mistakes, Quick Revision Summary, Mnemonics
 - [x] Total knowledge base: 185,485 words across 80 chapters
 - [x] Idempotent generation script at scripts/generate-narrations.mjs (skips already-generated chapters)
+
+## Phase 15: Multi-Tenant ERP+LMS System
+
+### Database Schema
+- [x] institutes table (tenant): id, name, code, subdomain, logo, contactEmail, plan, status, createdAt
+- [x] institute_users table: id, instituteId, name, email, phone, passwordHash, role (admin|teacher|student|parent), status, createdAt
+- [x] classes table: id, instituteId, name (Grade 1-12), section, classTeacherId
+- [x] subjects table: id, instituteId, name, code, description
+- [x] teacher_class_subjects table: teacherId, classId, subjectId, instituteId
+- [x] student_enrollments table: studentId, classId, instituteId, academicYear
+- [x] parent_student_map table: parentId, studentId, instituteId, relation
+- [x] attendance table: studentId, classId, subjectId, date, status, markedBy, instituteId
+- [x] assignments table: id, title, classId, subjectId, teacherId, dueDate, description, instituteId
+- [x] assignment_submissions table: id, assignmentId, studentId, submittedAt, grade, feedback
+- [x] audit_logs table: id, userId, instituteId, action, details, ip, createdAt
+
+### Server / Auth
+- [x] Multi-tenant auth middleware: validate JWT, attach instituteId+role to ctx
+- [x] Institute login endpoint: email+password scoped to institute code
+- [x] tRPC procedures: institutes CRUD (super admin only)
+- [x] tRPC procedures: institute users CRUD (institute admin scoped)
+- [x] tRPC procedures: classes, sections, subjects management
+- [x] tRPC procedures: teacher-class-subject mapping
+- [x] tRPC procedures: student enrollment (class assignment)
+- [x] tRPC procedures: parent-student mapping
+- [x] tRPC procedures: attendance marking and reports
+- [x] tRPC procedures: assignments CRUD + submissions
+
+### Super Admin Portal
+- [x] Institute list page with status, plan, user counts
+- [x] Create/Edit institute form (name, code, subdomain, contact, plan)
+- [x] Activate/Suspend institute toggle
+- [x] Global analytics: total institutes, users, active sessions
+- [x] Institute Admin account creation from Super Admin
+
+### Institute Admin Portal
+- [x] User Management: Teachers list with create/edit/deactivate
+- [x] User Management: Students list with create/edit/deactivate
+- [x] User Management: Parents list with create/edit/deactivate
+- [x] Bulk invite via email (send onboarding link)
+- [x] Class Management: create classes (Grade + Section), assign class teacher
+- [x] Subject Management: create subjects, assign to classes
+- [x] Teacher Mapping: assign teacher to class+subject
+- [x] Student Enrollment: assign student to class+section
+- [x] Parent-Student Mapping: link parent to one or more students
+- [ ] Institute settings page (logo, name, contact)
+
+### Teacher Dashboard
+- [ ] My Classes & Subjects view
+- [ ] Attendance marking interface (class-wise)
+- [ ] Assignments: create, view submissions, grade
+- [ ] Study materials upload
+
+### Student Dashboard
+- [ ] My Class, Subjects, Timetable view
+- [ ] View assignments and submit
+- [ ] View attendance record
+- [ ] View grades
+
+### Parent Dashboard
+- [ ] View linked children
+- [ ] Child attendance and performance summary
+- [ ] Notifications from teachers
+
+### Tests
+- [ ] Vitest: tenant isolation (user cannot access another institute's data)
+- [ ] Vitest: RBAC (teacher cannot access admin routes)
+- [ ] Vitest: institute user login flow

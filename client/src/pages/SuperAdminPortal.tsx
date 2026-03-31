@@ -5,28 +5,81 @@ import { Link } from "wouter";
 import {
   Building2, Users, BookOpen, TrendingUp, Settings, Plus, Shield,
   Globe, BarChart3, Key, Bell, ChevronRight, Activity, Zap,
-  GraduationCap, Database, Server, AlertCircle, CheckCircle2
+  GraduationCap, Database, Server, AlertCircle, CheckCircle2,
+  ToggleRight, ToggleLeft, Eye
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 
 export default function SuperAdminPortal() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [selectedInstituteId, setSelectedInstituteId] = useState<number | null>(null);
 
+  // Real ERP data
+  const analytics = trpc.erp.getGlobalAnalytics.useQuery();
+  const institutes = trpc.erp.listInstitutes.useQuery();
+  const instituteDetail = trpc.erp.getInstituteDetail.useQuery(
+    { instituteId: selectedInstituteId! },
+    { enabled: !!selectedInstituteId }
+  );
   const { data: dashStats } = trpc.admin.getDashboardStats.useQuery();
-  const { data: platformAnalytics } = trpc.admin.getPlatformAnalytics.useQuery();
-  const { data: contentStatus } = trpc.admin.getContentStatus.useQuery();
-  const institutes: any[] = [];
   const platformStats = dashStats;
 
+  const createInstitute = trpc.erp.createInstitute.useMutation({
+    onSuccess: (data) => {
+      toast.success("Institute created! Admin invite link generated.");
+      setShowCreateDialog(false);
+      institutes.refetch();
+      analytics.refetch();
+      setForm({ name: "", code: "", contactEmail: "", contactPhone: "", city: "", state: "", website: "", subscriptionPlan: "trial", maxStudents: 100, maxTeachers: 10, adminEmail: "", adminName: "" });
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const toggleStatus = trpc.erp.toggleInstituteStatus.useMutation({
+    onSuccess: () => { toast.success("Status updated"); institutes.refetch(); },
+  });
+
+  const [form, setForm] = useState({
+    name: "", code: "", contactEmail: "", contactPhone: "",
+    city: "", state: "", website: "",
+    subscriptionPlan: "trial" as "trial" | "basic" | "standard" | "premium" | "enterprise",
+    maxStudents: 100, maxTeachers: 10,
+    adminEmail: "", adminName: "",
+  });
+
+  const handleCreate = () => {
+    if (!form.name || !form.code || !form.contactEmail || !form.adminEmail || !form.adminName) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+    createInstitute.mutate(form);
+  };
+
+  const planColors: Record<string, string> = {
+    trial: "bg-gray-100 text-gray-600",
+    basic: "bg-blue-100 text-blue-700",
+    standard: "bg-indigo-100 text-indigo-700",
+    premium: "bg-purple-100 text-purple-700",
+    enterprise: "bg-amber-100 text-amber-700",
+  };
+
   const stats = [
-    { label: "Total Institutes", value: institutes?.length || 0, icon: Building2, color: "text-blue-400", bg: "bg-blue-400/10" },
-    { label: "Total Students", value: platformStats?.totalUsers || 0, icon: GraduationCap, color: "text-green-400", bg: "bg-green-400/10" },
-    { label: "Active API Keys", value: platformStats?.totalAssessments || 0, icon: Key, color: "text-amber-400", bg: "bg-amber-400/10" },
-    { label: "Content Chapters", value: platformStats?.totalChapters || 80, icon: BookOpen, color: "text-purple-400", bg: "bg-purple-400/10" },
+    { label: "Total Institutes", value: analytics.data?.totalInstitutes ?? 0, icon: Building2, color: "text-blue-500", bg: "bg-blue-50" },
+    { label: "Active Institutes", value: analytics.data?.activeInstitutes ?? 0, icon: CheckCircle2, color: "text-green-500", bg: "bg-green-50" },
+    { label: "Total Students", value: analytics.data?.totalStudents ?? 0, icon: GraduationCap, color: "text-indigo-500", bg: "bg-indigo-50" },
+    { label: "Total Teachers", value: analytics.data?.totalTeachers ?? 0, icon: Users, color: "text-purple-500", bg: "bg-purple-50" },
+    { label: "Total Classes", value: analytics.data?.totalClasses ?? 0, icon: BookOpen, color: "text-amber-500", bg: "bg-amber-50" },
+    { label: "Content Chapters", value: platformStats?.totalChapters ?? 80, icon: Database, color: "text-teal-500", bg: "bg-teal-50" },
   ];
 
   return (
@@ -75,7 +128,7 @@ export default function SuperAdminPortal() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-muted mb-6">
             <TabsTrigger value="overview">Platform Overview</TabsTrigger>
-            <TabsTrigger value="institutes">Institutes</TabsTrigger>
+            <TabsTrigger value="institutes">Institutes ({institutes.data?.length ?? 0})</TabsTrigger>
             <TabsTrigger value="content">Knowledge Base</TabsTrigger>
             <TabsTrigger value="api">API Management</TabsTrigger>
             <TabsTrigger value="system">System Health</TabsTrigger>
@@ -146,35 +199,23 @@ export default function SuperAdminPortal() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {institutes && institutes.length > 0 ? (
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Institute</th>
-                        <th>City</th>
-                        <th>Students</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {institutes.slice(0, 5).map((inst: any) => (
-                        <tr key={inst.id}>
-                          <td className="font-medium text-foreground">{inst.name}</td>
-                          <td>{inst.city || "—"}</td>
-                          <td>{inst.studentCount || 0}</td>
-                          <td>
-                            <Badge variant="outline" className={inst.isActive ? "text-green-400 border-green-400/30" : "text-red-400 border-red-400/30"}>
-                              {inst.isActive ? "Active" : "Inactive"}
-                            </Badge>
-                          </td>
-                          <td>
-                            <Button size="sm" variant="ghost" className="text-xs">Manage</Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {(institutes.data ?? []).length > 0 ? (
+                  <div className="space-y-2">
+                    {(institutes.data ?? []).slice(0, 5).map((inst) => (
+                      <div key={inst.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-3">
+                          <Building2 className="w-4 h-4 text-primary" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{inst.name}</p>
+                            <p className="text-xs text-muted-foreground">{inst.city || "—"}</p>
+                          </div>
+                        </div>
+                        <Badge variant={inst.isActive ? "default" : "secondary"} className="text-xs">
+                          {inst.isActive ? "Active" : "Suspended"}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <Building2 className="w-10 h-10 mx-auto mb-2 opacity-30" />
@@ -191,66 +232,149 @@ export default function SuperAdminPortal() {
           {/* Institutes Tab */}
           <TabsContent value="institutes" className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Institute Management</h2>
-              <Button size="sm" className="gap-2">
-                <Plus className="w-4 h-4" /> Onboard Institute
-              </Button>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Institute Management</h2>
+                <p className="text-sm text-muted-foreground">{institutes.data?.length ?? 0} institutes registered on the platform</p>
+              </div>
+              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gap-2">
+                    <Plus className="w-4 h-4" /> Onboard Institute
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Onboard New Institute</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div><Label>Institute Name *</Label><Input placeholder="e.g. Allen Career Institute" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+                      <div><Label>Short Code *</Label><Input placeholder="e.g. ALLEN" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div><Label>Contact Email *</Label><Input type="email" placeholder="admin@institute.com" value={form.contactEmail} onChange={e => setForm(f => ({ ...f, contactEmail: e.target.value }))} /></div>
+                      <div><Label>Contact Phone</Label><Input placeholder="+91 98765 43210" value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div><Label>City</Label><Input placeholder="Kota" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} /></div>
+                      <div><Label>State</Label><Input placeholder="Rajasthan" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} /></div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label>Subscription Plan</Label>
+                        <Select value={form.subscriptionPlan} onValueChange={(v: any) => setForm(f => ({ ...f, subscriptionPlan: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="trial">Trial</SelectItem>
+                            <SelectItem value="basic">Basic</SelectItem>
+                            <SelectItem value="standard">Standard</SelectItem>
+                            <SelectItem value="premium">Premium</SelectItem>
+                            <SelectItem value="enterprise">Enterprise</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div><Label>Max Students</Label><Input type="number" value={form.maxStudents} onChange={e => setForm(f => ({ ...f, maxStudents: Number(e.target.value) }))} /></div>
+                      <div><Label>Max Teachers</Label><Input type="number" value={form.maxTeachers} onChange={e => setForm(f => ({ ...f, maxTeachers: Number(e.target.value) }))} /></div>
+                    </div>
+                    <div className="border-t pt-4">
+                      <p className="text-sm font-medium text-foreground mb-3">Institute Admin Account</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div><Label>Admin Name *</Label><Input placeholder="Dr. Rajesh Kumar" value={form.adminName} onChange={e => setForm(f => ({ ...f, adminName: e.target.value }))} /></div>
+                        <div><Label>Admin Email *</Label><Input type="email" placeholder="rajesh@institute.com" value={form.adminEmail} onChange={e => setForm(f => ({ ...f, adminEmail: e.target.value }))} /></div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">An invite link will be generated for the admin to complete their setup.</p>
+                    </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                      <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
+                      <Button onClick={handleCreate} disabled={createInstitute.isPending}>
+                        {createInstitute.isPending ? "Creating..." : "Create & Generate Invite"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
 
-            <Card className="border-border bg-card">
-              <CardContent className="p-0">
-                {institutes && institutes.length > 0 ? (
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Institute Name</th>
-                        <th>Type</th>
-                        <th>City / State</th>
-                        <th>Students</th>
-                        <th>Teachers</th>
-                        <th>Plan</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {institutes.map((inst: any) => (
-                        <tr key={inst.id}>
-                          <td className="font-medium text-foreground">{inst.name}</td>
-                          <td className="capitalize">{inst.type || "coaching"}</td>
-                          <td>{[inst.city, inst.state].filter(Boolean).join(", ") || "—"}</td>
-                          <td>{inst.studentCount || 0}</td>
-                          <td>{inst.teacherCount || 0}</td>
-                          <td>
-                            <Badge variant="outline" className="text-amber-400 border-amber-400/30">
-                              {inst.subscriptionPlan || "Basic"}
-                            </Badge>
-                          </td>
-                          <td>
-                            <Badge variant="outline" className={inst.isActive ? "text-green-400 border-green-400/30" : "text-red-400 border-red-400/30"}>
-                              {inst.isActive ? "Active" : "Inactive"}
-                            </Badge>
-                          </td>
-                          <td className="flex gap-1">
-                            <Button size="sm" variant="ghost" className="text-xs">Edit</Button>
-                            <Button size="sm" variant="ghost" className="text-xs text-red-400">Suspend</Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Building2 className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                    <p className="font-medium">No institutes onboarded yet</p>
-                    <p className="text-sm mt-1">Start by onboarding your first institute</p>
-                    <Button className="mt-4 gap-2">
-                      <Plus className="w-4 h-4" /> Onboard Institute
-                    </Button>
+            <div className="space-y-3">
+              {institutes.isLoading && <div className="text-center py-8 text-muted-foreground">Loading institutes...</div>}
+              {(institutes.data ?? []).map((inst) => (
+                <Card key={inst.id} className="border-border bg-card hover:border-primary/30 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Building2 className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-foreground">{inst.name}</p>
+                            <span className="text-xs text-muted-foreground">#{inst.code}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{inst.contactEmail} {inst.city ? `· ${inst.city}, ${inst.state}` : ""}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${planColors[inst.subscriptionPlan || "trial"]}`}>
+                          {inst.subscriptionPlan || "trial"}
+                        </span>
+                        <Badge variant={inst.isActive ? "default" : "secondary"} className="text-xs">
+                          {inst.isActive ? "Active" : "Suspended"}
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedInstituteId(inst.id)}>
+                          <Eye className="w-3 h-3 mr-1" /> Details
+                        </Button>
+                        <Button
+                          variant="ghost" size="sm"
+                          className={`text-xs ${inst.isActive ? "text-red-500 hover:text-red-600" : "text-green-600 hover:text-green-700"}`}
+                          onClick={() => toggleStatus.mutate({ instituteId: inst.id, isActive: !inst.isActive })}
+                        >
+                          {inst.isActive ? <><ToggleRight className="w-3 h-3 mr-1" />Suspend</> : <><ToggleLeft className="w-3 h-3 mr-1" />Activate</>}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {!institutes.isLoading && !(institutes.data?.length) && (
+                <Card className="border-dashed border-border">
+                  <CardContent className="py-16 text-center">
+                    <Building2 className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+                    <p className="text-muted-foreground font-medium">No institutes onboarded yet</p>
+                    <p className="text-sm text-muted-foreground/70 mt-1">Click "Onboard Institute" to get started</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {selectedInstituteId && instituteDetail.data && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader className="flex flex-row items-center justify-between pb-3">
+                  <CardTitle className="text-base">{instituteDetail.data.name} — Detail View</CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedInstituteId(null)}>Close</Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    {[
+                      { label: "Students", value: instituteDetail.data.stats.students, icon: GraduationCap },
+                      { label: "Teachers", value: instituteDetail.data.stats.teachers, icon: Users },
+                      { label: "Classes", value: instituteDetail.data.stats.classes, icon: BookOpen },
+                    ].map((s) => (
+                      <div key={s.label} className="bg-card rounded-lg p-4 border border-border text-center">
+                        <s.icon className="w-5 h-5 mx-auto mb-1 text-primary" />
+                        <p className="text-2xl font-bold text-foreground">{s.value}</p>
+                        <p className="text-xs text-muted-foreground">{s.label}</p>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="text-muted-foreground">Email:</span> <span className="font-medium text-foreground">{instituteDetail.data.contactEmail}</span></div>
+                    <div><span className="text-muted-foreground">Plan:</span> <span className="font-medium text-foreground capitalize">{instituteDetail.data.subscriptionPlan}</span></div>
+                    <div><span className="text-muted-foreground">Location:</span> <span className="font-medium text-foreground">{[instituteDetail.data.city, instituteDetail.data.state].filter(Boolean).join(", ") || "—"}</span></div>
+                    <div><span className="text-muted-foreground">Status:</span> <span className={`font-medium ${instituteDetail.data.isActive ? "text-green-500" : "text-red-500"}`}>{instituteDetail.data.isActive ? "Active" : "Suspended"}</span></div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Knowledge Base Tab */}

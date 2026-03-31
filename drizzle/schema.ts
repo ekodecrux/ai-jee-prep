@@ -888,3 +888,96 @@ export const onboardingProgress = mysqlTable("onboarding_progress", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type OnboardingProgress = typeof onboardingProgress.$inferSelect;
+
+// ─── Institute Subjects (per-institute subject catalog) ───────────────────────
+export const instituteSubjects = mysqlTable("institute_subjects", {
+  id: int("id").autoincrement().primaryKey(),
+  instituteId: int("instituteId").notNull(),
+  name: varchar("name", { length: 256 }).notNull(),
+  code: varchar("code", { length: 32 }),
+  description: text("description"),
+  colorHex: varchar("colorHex", { length: 7 }).default("#6366f1"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type InstituteSubject = typeof instituteSubjects.$inferSelect;
+
+// ─── Teacher-Class-Subject Assignments ───────────────────────────────────────
+export const teacherClassSubjects = mysqlTable("teacher_class_subjects", {
+  id: int("id").autoincrement().primaryKey(),
+  teacherId: int("teacherId").notNull(),
+  classId: int("classId").notNull(),
+  subjectId: int("subjectId").notNull(),
+  instituteId: int("instituteId").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  assignedAt: timestamp("assignedAt").defaultNow().notNull(),
+});
+export type TeacherClassSubject = typeof teacherClassSubjects.$inferSelect;
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
+export const attendance = mysqlTable("attendance", {
+  id: int("id").autoincrement().primaryKey(),
+  instituteId: int("instituteId").notNull(),
+  classId: int("classId").notNull(),
+  studentId: int("studentId").notNull(),
+  subjectId: int("subjectId"),                                        // null = general/daily
+  date: varchar("date", { length: 10 }).notNull(),                   // YYYY-MM-DD
+  status: mysqlEnum("status", ["present", "absent", "late", "excused"]).notNull(),
+  markedBy: int("markedBy").notNull(),                               // teacherId
+  remarks: varchar("remarks", { length: 256 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Attendance = typeof attendance.$inferSelect;
+
+// ─── Assignments ──────────────────────────────────────────────────────────────
+export const instituteAssignments = mysqlTable("institute_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  instituteId: int("instituteId").notNull(),
+  classId: int("classId").notNull(),
+  subjectId: int("subjectId").notNull(),
+  teacherId: int("teacherId").notNull(),
+  title: varchar("title", { length: 512 }).notNull(),
+  description: text("description"),
+  dueDate: varchar("dueDate", { length: 10 }),                       // YYYY-MM-DD
+  maxMarks: int("maxMarks").default(100),
+  fileUrl: varchar("fileUrl", { length: 1024 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type InstituteAssignment = typeof instituteAssignments.$inferSelect;
+
+// ─── Assignment Submissions ───────────────────────────────────────────────────
+export const assignmentSubmissions = mysqlTable("assignment_submissions", {
+  id: int("id").autoincrement().primaryKey(),
+  assignmentId: int("assignmentId").notNull(),
+  studentId: int("studentId").notNull(),
+  instituteId: int("instituteId").notNull(),
+  fileUrl: varchar("fileUrl", { length: 1024 }),
+  textContent: text("textContent"),
+  grade: int("grade"),
+  feedback: text("feedback"),
+  gradedBy: int("gradedBy"),
+  gradedAt: timestamp("gradedAt"),
+  submittedAt: timestamp("submittedAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AssignmentSubmission = typeof assignmentSubmissions.$inferSelect;
+
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+export const auditLogs = mysqlTable("audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  instituteId: int("instituteId"),
+  action: varchar("action", { length: 128 }).notNull(),              // e.g. "user.create", "login.failed"
+  targetType: varchar("targetType", { length: 64 }),                 // "user", "class", "assignment"
+  targetId: varchar("targetId", { length: 64 }),
+  details: json("details").$type<Record<string, unknown>>(),
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  userAgent: varchar("userAgent", { length: 512 }),
+  severity: mysqlEnum("severity", ["info", "warning", "critical"]).default("info").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AuditLog = typeof auditLogs.$inferSelect;
