@@ -8,22 +8,23 @@ import {
   BookOpen, LayoutDashboard, Map, Search, FlaskConical,
   Calculator, Atom, Trophy, Code2, Menu, X, LogOut,
   Zap, GraduationCap, User, Shield, School, UserCheck,
-  Heart, Bell, BarChart3, Target, TrendingUp, Activity
+  Heart, Bell, BarChart3, Target, Layers, ChevronRight,
+  Sparkles
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 const SUBJECTS = [
-  { id: "physics", label: "Physics", icon: Atom, color: "text-blue-400", chapters: 25 },
-  { id: "chemistry", label: "Chemistry", icon: FlaskConical, color: "text-green-400", chapters: 28 },
-  { id: "mathematics", label: "Mathematics", icon: Calculator, color: "text-amber-400", chapters: 27 },
+  { id: "physics", label: "Physics", icon: Atom, color: "text-blue-500", chapters: 25 },
+  { id: "chemistry", label: "Chemistry", icon: FlaskConical, color: "text-emerald-500", chapters: 28 },
+  { id: "mathematics", label: "Mathematics", icon: Calculator, color: "text-amber-500", chapters: 27 },
 ];
 
 const ROLE_PORTAL_MAP: Record<string, { path: string; label: string; icon: any; color: string }> = {
-  super_admin: { path: "/super-admin", label: "Super Admin", icon: Shield, color: "text-purple-400" },
-  admin: { path: "/super-admin", label: "Super Admin", icon: Shield, color: "text-purple-400" },
-  institute_admin: { path: "/institute-admin", label: "Institute Admin", icon: School, color: "text-blue-400" },
-  teacher: { path: "/teacher", label: "Teacher Portal", icon: UserCheck, color: "text-teal-400" },
-  parent: { path: "/parent", label: "Parent Portal", icon: Heart, color: "text-pink-400" },
+  super_admin: { path: "/super-admin", label: "Super Admin", icon: Shield, color: "text-violet-600" },
+  admin: { path: "/super-admin", label: "Super Admin", icon: Shield, color: "text-violet-600" },
+  institute_admin: { path: "/institute-admin", label: "Institute Admin", icon: School, color: "text-primary" },
+  teacher: { path: "/teacher", label: "Teacher Portal", icon: UserCheck, color: "text-teal-600" },
+  parent: { path: "/parent", label: "Parent Portal", icon: Heart, color: "text-pink-500" },
 };
 
 function NotificationBell() {
@@ -41,9 +42,9 @@ function NotificationBell() {
   };
 
   const urgencyColor = (urgency: string) => {
-    if (urgency === "critical" || urgency === "high") return "text-red-400";
-    if (urgency === "medium") return "text-amber-400";
-    return "text-blue-400";
+    if (urgency === "critical" || urgency === "high") return "text-red-500";
+    if (urgency === "medium") return "text-amber-500";
+    return "text-primary";
   };
 
   return (
@@ -67,7 +68,7 @@ function NotificationBell() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <span className="font-semibold text-sm text-foreground">Notifications</span>
               {unreadCount > 0 && (
-                <Badge variant="outline" className="text-xs text-red-400 border-red-400/30">{unreadCount} new</Badge>
+                <Badge variant="outline" className="text-xs text-red-500 border-red-200">{unreadCount} new</Badge>
               )}
             </div>
             <div className="max-h-80 overflow-y-auto">
@@ -75,11 +76,11 @@ function NotificationBell() {
                 notifications.map((n: any) => (
                   <div
                     key={n.id}
-                    className={`px-4 py-3 border-b border-border/50 last:border-0 cursor-pointer hover:bg-muted transition-colors ${!n.isRead ? "bg-primary/5" : ""}`}
+                    className={`px-4 py-3 border-b border-border/50 last:border-0 cursor-pointer hover:bg-muted/50 transition-colors ${!n.isRead ? "bg-primary/5" : ""}`}
                     onClick={() => handleMarkRead(n.id)}
                   >
                     <div className="flex items-start gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${!n.isRead ? "bg-primary" : "bg-muted"}`} />
+                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${!n.isRead ? "bg-primary" : "bg-muted-foreground/30"}`} />
                       <div className="flex-1 min-w-0">
                         <p className={`text-xs font-medium ${urgencyColor(n.urgency)} mb-0.5`}>{n.title}</p>
                         <p className="text-xs text-muted-foreground line-clamp-2">{n.message}</p>
@@ -114,6 +115,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const NAV_ITEMS = [
     { path: "/", label: "Home", icon: Zap },
+    { path: "/exams", label: "Exam Catalog", icon: Layers },
     { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { path: "/performance", label: "Performance", icon: BarChart3 },
     { path: "/study-plan", label: "Study Plan", icon: Map },
@@ -125,20 +127,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-border flex flex-col
+        fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border flex flex-col
         transform transition-transform duration-300 ease-in-out
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         lg:relative lg:translate-x-0 lg:flex
       `}>
         {/* Logo */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-primary" />
+        <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
+              <Sparkles className="w-4.5 h-4.5 text-white" />
             </div>
             <div>
-              <div className="font-display font-bold text-sm text-foreground leading-tight">JEE Master</div>
-              <div className="text-xs text-muted-foreground">Knowledge Platform</div>
+              <div className="font-display font-bold text-sm text-foreground leading-tight tracking-tight">ExamForge AI</div>
+              <div className="text-[10px] text-muted-foreground font-medium tracking-wide uppercase">Knowledge Center</div>
             </div>
           </Link>
           <button className="lg:hidden text-muted-foreground hover:text-foreground" onClick={() => setSidebarOpen(false)}>
@@ -147,14 +149,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
           {/* Role Portal Link */}
           {isAuthenticated && portalLink && (
-            <div className="mb-3">
+            <div className="mb-3 pb-3 border-b border-border">
               <Link href={portalLink.path}>
-                <div className={`nav-item ${location === portalLink.path ? "active" : ""} border border-border/50 rounded-xl`}>
+                <div className={`nav-item ${location === portalLink.path ? "active" : ""} border border-border/60 rounded-xl bg-muted/40`}>
                   <portalLink.icon className={`w-4 h-4 flex-shrink-0 ${portalLink.color}`} />
                   <span className="text-sm font-medium">{portalLink.label}</span>
+                  <ChevronRight className="w-3.5 h-3.5 ml-auto text-muted-foreground/50" />
                 </div>
               </Link>
             </div>
@@ -169,15 +172,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
 
-          {/* Subjects */}
+          {/* JEE Sub-brand */}
           <div className="pt-3 pb-1">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Subjects</div>
+            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">JEE Module</div>
             {SUBJECTS.map(subject => (
               <Link key={subject.id} href={`/subject/${subject.id}`}>
                 <div className={`nav-item ${location.startsWith(`/subject/${subject.id}`) ? "active" : ""}`}>
                   <subject.icon className={`w-4 h-4 flex-shrink-0 ${subject.color}`} />
                   <span className="text-sm flex-1">{subject.label}</span>
-                  <span className="text-xs text-muted-foreground">{subject.chapters}</span>
+                  <span className="text-[10px] text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded-full">{subject.chapters}</span>
                 </div>
               </Link>
             ))}
@@ -185,28 +188,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Practice */}
           <div className="pt-3 pb-1">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Practice</div>
+            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Practice</div>
             <Link href="/mock-test/jee_main_full">
               <div className={`nav-item ${location.startsWith("/mock-test") ? "active" : ""}`}>
-                <Trophy className="w-4 h-4 flex-shrink-0 text-yellow-400" />
+                <Trophy className="w-4 h-4 flex-shrink-0 text-amber-500" />
                 <span className="text-sm">Mock Tests</span>
               </div>
             </Link>
           </div>
 
-          {/* Portals (for admin roles) */}
+          {/* Admin portals */}
           {isAuthenticated && (userRole === "super_admin" || userRole === "admin") && (
             <div className="pt-3 pb-1">
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Admin</div>
+              <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Platform Admin</div>
               <Link href="/super-admin">
                 <div className={`nav-item ${location === "/super-admin" ? "active" : ""}`}>
-                  <Shield className="w-4 h-4 flex-shrink-0 text-purple-400" />
+                  <Shield className="w-4 h-4 flex-shrink-0 text-violet-600" />
                   <span className="text-sm">Super Admin</span>
                 </div>
               </Link>
               <Link href="/institute-admin">
                 <div className={`nav-item ${location === "/institute-admin" ? "active" : ""}`}>
-                  <School className="w-4 h-4 flex-shrink-0 text-blue-400" />
+                  <School className="w-4 h-4 flex-shrink-0 text-primary" />
                   <span className="text-sm">Institute Admin</span>
                 </div>
               </Link>
@@ -215,17 +218,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* User section */}
-        <div className="p-3 border-t border-border">
+        <div className="p-3 border-t border-sidebar-border">
           {isAuthenticated && user ? (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
                 <User className="w-4 h-4 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-foreground truncate">{user.name || "Student"}</div>
                 <div className="text-xs text-muted-foreground truncate capitalize">{userRole.replace("_", " ")}</div>
               </div>
-              <button onClick={() => logout()} className="text-muted-foreground hover:text-foreground transition-colors">
+              <button onClick={() => logout()} className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded-lg hover:bg-destructive/10">
                 <LogOut className="w-4 h-4" />
               </button>
             </div>
@@ -239,19 +242,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-background/90 backdrop-blur border-b border-border px-4 py-3 flex items-center gap-3">
+        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3 flex items-center gap-3 shadow-sm">
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-muted-foreground hover:text-foreground">
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2 lg:hidden">
-            <GraduationCap className="w-5 h-5 text-primary" />
-            <span className="font-display font-bold text-sm">JEE Master Prep</span>
+            <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="font-display font-bold text-sm text-foreground">ExamForge AI</span>
           </div>
           <div className="flex-1" />
           <Link href="/search">

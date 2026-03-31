@@ -21,6 +21,8 @@ import TeacherPortal from "./pages/TeacherPortal";
 import ParentPortal from "./pages/ParentPortal";
 import InstituteConfig from "./pages/InstituteConfig";
 import OnboardingWizard from "./pages/OnboardingWizard";
+import ExamCatalogPage from "./pages/ExamCatalogPage";
+import JeeSubBrandPage from "./pages/JeeSubBrandPage";
 
 function Router() {
   return (
@@ -48,6 +50,10 @@ function Router() {
       <Route path="/teacher" component={TeacherPortal} />
       <Route path="/parent" component={ParentPortal} />
 
+      {/* Exam Catalog */}
+      <Route path="/exams" component={ExamCatalogPage} />
+      <Route path="/exams/jee" component={JeeSubBrandPage} />
+
       {/* Onboarding & Configuration */}
       <Route path="/onboard" component={OnboardingWizard} />
       <Route path="/institute-config" component={InstituteConfig} />
@@ -62,7 +68,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
           <Router />
