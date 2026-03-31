@@ -557,3 +557,15 @@
 - [ ] Vitest: tenant isolation (user cannot access another institute's data)
 - [ ] Vitest: RBAC (teacher cannot access admin routes)
 - [ ] Vitest: institute user login flow
+
+## Phase 16: ERP Feature Completions
+
+- [x] Attendance marking UI in Teacher portal (class selector, date picker, student list, present/absent toggle)
+- [x] Wire Teacher portal attendance to erp.markAttendance and erp.getAttendance procedures
+- [x] Monthly attendance summary tab in Institute Admin portal
+- [x] Assign-to-Class button + dialog on student rows in Institute Admin Users tab
+- [x] Link Parent dialog on student rows in Institute Admin portal (search parent, set relationship)
+- [x] erp.markAttendance procedure (bulk mark per class per date)
+- [x] erp.getAttendance procedure (fetch attendance for class+date)
+- [x] erp.getMonthlyAttendanceSummary procedure (per-student monthly stats)
+- [ ] erp.getParentStudentLinks procedure (list parent-student links for an institute)

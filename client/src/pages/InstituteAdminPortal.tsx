@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
@@ -6,7 +6,7 @@ import {
   BarChart3, Bell, Key, FileText, ChevronRight, Download,
   School, Calendar, ClipboardList, Settings, AlertCircle,
   Zap, CheckCircle2, Loader2, RefreshCw, Link2, BookMarked,
-  UserX, UserCheck2, Pencil, Trash2, Search
+  UserX, UserCheck2, Pencil, Trash2, Search, UserPlus, Link2 as LinkIcon, BarChart2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,18 @@ export default function InstituteAdminPortal() {
     onSuccess: () => { toast.success("Member deactivated"); members.refetch(); teachers.refetch(); students.refetch(); parents.refetch(); },
   });
 
+  // ── Enroll student in class ───────────────────────────────────────────────
+  const enrollStudent_mut = trpc.erp.enrollStudentInClass.useMutation({
+    onSuccess: () => { toast.success(`${enrollStudent?.name} enrolled successfully!`); setShowEnrollDialog(false); students.refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  // ── Link parent to student ────────────────────────────────────────────────
+  const linkParent_mut = trpc.erp.linkParentToStudent.useMutation({
+    onSuccess: () => { toast.success(`Parent linked to ${linkStudent?.name}!`); setShowLinkParentDialog(false); },
+    onError: (e) => toast.error(e.message),
+  });
+
   // ── Form states ───────────────────────────────────────────────────────────
   const [inviteForm, setInviteForm] = useState({ email: "", name: "", role: "student" as "teacher" | "student" | "parent", classId: "" });
   const [classForm, setClassForm] = useState({ name: "", grade: "11" as "11" | "12" | "dropper" | "integrated", academicYear: "2025-26", examFocus: "jee_main", maxStudents: 60 });
@@ -67,6 +79,28 @@ export default function InstituteAdminPortal() {
   const [showClassDialog, setShowClassDialog] = useState(false);
   const [showSubjectDialog, setShowSubjectDialog] = useState(false);
   const [showMappingDialog, setShowMappingDialog] = useState(false);
+
+  // ── Assign-to-Class dialog state ─────────────────────────────────────────
+  const [showEnrollDialog, setShowEnrollDialog] = useState(false);
+  const [enrollStudent, setEnrollStudent] = useState<{ memberId: number; userId: number; name: string } | null>(null);
+  const [enrollClassId, setEnrollClassId] = useState("");
+  const [enrollYear, setEnrollYear] = useState("2025-26");
+
+  // ── Link Parent dialog state ──────────────────────────────────────────────
+  const [showLinkParentDialog, setShowLinkParentDialog] = useState(false);
+  const [linkStudent, setLinkStudent] = useState<{ memberId: number; userId: number; name: string } | null>(null);
+  const [linkParentId, setLinkParentId] = useState("");
+  const [linkRelation, setLinkRelation] = useState<"father" | "mother" | "guardian" | "other">("guardian");
+
+  // ── Attendance Summary state ──────────────────────────────────────────────
+  const [attSummaryClassId, setAttSummaryClassId] = useState<number | null>(null);
+  const [attSummaryMonth, setAttSummaryMonth] = useState(() => new Date().toISOString().slice(0, 7));
+
+  // ── Attendance summary query ──────────────────────────────────────────────
+  const attSummary = trpc.erp.getAttendanceSummary.useQuery(
+    { instituteId, classId: attSummaryClassId!, month: attSummaryMonth },
+    { enabled: !!attSummaryClassId }
+  );
 
   // Legacy state
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; chapter: string; done: boolean } | null>(null);
@@ -222,6 +256,102 @@ export default function InstituteAdminPortal() {
           </DialogContent>
         </Dialog>
 
+        {/* ── Enroll Student in Class Dialog ── */}
+        <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Assign Student to Class</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <p className="text-sm font-medium text-blue-800">{enrollStudent?.name}</p>
+                <p className="text-xs text-blue-600">Will be enrolled in the selected class</p>
+              </div>
+              <div><Label>Class *</Label>
+                <Select value={enrollClassId} onValueChange={setEnrollClassId}>
+                  <SelectTrigger><SelectValue placeholder="Select class…" /></SelectTrigger>
+                  <SelectContent>
+                    {(classes.data ?? []).map(c => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.name} — Grade {c.grade}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Academic Year</Label>
+                <Input value={enrollYear} onChange={e => setEnrollYear(e.target.value)} placeholder="2025-26" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowEnrollDialog(false)}>Cancel</Button>
+                <Button
+                  disabled={!enrollClassId || enrollStudent_mut.isPending}
+                  onClick={() => {
+                    if (!enrollStudent || !enrollClassId) return;
+                    enrollStudent_mut.mutate({
+                      instituteId,
+                      studentId: enrollStudent.userId,
+                      classId: Number(enrollClassId),
+                    });
+                  }}
+                >
+                  {enrollStudent_mut.isPending ? "Enrolling…" : "Enroll Student"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Link Parent Dialog ── */}
+        <Dialog open={showLinkParentDialog} onOpenChange={setShowLinkParentDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Link Parent to Student</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                <p className="text-sm font-medium text-amber-800">{linkStudent?.name}</p>
+                <p className="text-xs text-amber-600">Select a parent to link to this student</p>
+              </div>
+              <div><Label>Parent *</Label>
+                <Select value={linkParentId} onValueChange={setLinkParentId}>
+                  <SelectTrigger><SelectValue placeholder="Select parent…" /></SelectTrigger>
+                  <SelectContent>
+                    {(parents.data ?? []).length === 0 && (
+                      <SelectItem value="_none" disabled>No parents onboarded yet</SelectItem>
+                    )}
+                    {(parents.data ?? []).map(p => (
+                      <SelectItem key={p.userId} value={String(p.userId)}>{p.name} ({p.email})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Relationship</Label>
+                <Select value={linkRelation} onValueChange={(v) => setLinkRelation(v as "father" | "mother" | "guardian" | "other")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="father">Father</SelectItem>
+                    <SelectItem value="mother">Mother</SelectItem>
+                    <SelectItem value="guardian">Guardian</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowLinkParentDialog(false)}>Cancel</Button>
+                <Button
+                  disabled={!linkParentId || linkParentId === "_none" || linkParent_mut.isPending}
+                  onClick={() => {
+                    if (!linkStudent || !linkParentId || linkParentId === "_none") return;
+                    linkParent_mut.mutate({
+                      instituteId,
+                      parentId: Number(linkParentId),
+                      studentId: linkStudent.userId,
+                      relationship: linkRelation as "father" | "mother" | "guardian" | "other",
+                    });
+                  }}
+                >
+                  {linkParent_mut.isPending ? "Linking…" : "Link Parent"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={showMappingDialog} onOpenChange={setShowMappingDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>Assign Teacher to Class &amp; Subject</DialogTitle></DialogHeader>
@@ -266,6 +396,7 @@ export default function InstituteAdminPortal() {
             <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
             <TabsTrigger value="content">Content Upload</TabsTrigger>
             <TabsTrigger value="bulk">Bulk Generate</TabsTrigger>
+            <TabsTrigger value="attendance">Attendance Summary</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
 
@@ -394,6 +525,26 @@ export default function InstituteAdminPortal() {
                         <Badge variant={m.isActive ? "default" : "secondary"} className="text-xs">
                           {m.isActive ? "Active" : "Inactive"}
                         </Badge>
+                        {m.role === "student" && m.isActive && (
+                          <Button variant="ghost" size="sm" className="text-xs text-blue-600 hover:text-blue-700"
+                            onClick={() => {
+                              setEnrollStudent({ memberId: m.memberId, userId: m.userId, name: m.name || "Student" });
+                              setEnrollClassId("");
+                              setShowEnrollDialog(true);
+                            }}>
+                            <UserPlus className="w-3 h-3 mr-1" /> Assign Class
+                          </Button>
+                        )}
+                        {m.role === "student" && m.isActive && (
+                          <Button variant="ghost" size="sm" className="text-xs text-amber-600 hover:text-amber-700"
+                            onClick={() => {
+                              setLinkStudent({ memberId: m.memberId, userId: m.userId, name: m.name || "Student" });
+                              setLinkParentId("");
+                              setShowLinkParentDialog(true);
+                            }}>
+                            <LinkIcon className="w-3 h-3 mr-1" /> Link Parent
+                          </Button>
+                        )}
                         {m.isActive && (
                           <Button variant="ghost" size="sm" className="text-xs text-red-500 hover:text-red-600"
                             onClick={() => deactivateMember.mutate({ memberId: m.memberId, instituteId })}>
@@ -753,6 +904,115 @@ export default function InstituteAdminPortal() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ── Attendance Summary Tab ── */}
+          <TabsContent value="attendance" className="space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Monthly Attendance Summary</h2>
+                <p className="text-sm text-muted-foreground">View per-student attendance percentages for any class and month</p>
+              </div>
+            </div>
+
+            {/* Selectors */}
+            <Card className="border-border bg-card">
+              <CardContent className="p-5">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Class</Label>
+                    <Select
+                      value={attSummaryClassId ? String(attSummaryClassId) : ""}
+                      onValueChange={(v) => setAttSummaryClassId(Number(v))}
+                    >
+                      <SelectTrigger className="bg-background border-border">
+                        <SelectValue placeholder="Select class…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(classes.data ?? []).map(c => (
+                          <SelectItem key={c.id} value={String(c.id)}>{c.name} — Grade {c.grade}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Month</Label>
+                    <input
+                      type="month"
+                      value={attSummaryMonth}
+                      onChange={e => setAttSummaryMonth(e.target.value)}
+                      className="w-full h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Summary table */}
+            {attSummaryClassId ? (
+              <Card className="border-border bg-card">
+                <CardContent className="p-0">
+                  {attSummary.isLoading ? (
+                    <div className="text-center py-10 text-muted-foreground">
+                      <BarChart2 className="w-8 h-8 mx-auto mb-2 animate-pulse opacity-40" />
+                      <p className="text-sm">Loading attendance data…</p>
+                    </div>
+                  ) : attSummary.data && attSummary.data.length > 0 ? (
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Student</th>
+                          <th className="text-center">Present</th>
+                          <th className="text-center">Absent</th>
+                          <th className="text-center">Late</th>
+                          <th className="text-center">Total Days</th>
+                          <th className="text-center">Attendance %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attSummary.data.map((row) => (
+                          <tr key={row.studentId}>
+                            <td className="font-medium text-foreground">{row.studentName || `Student #${row.studentId}`}</td>
+                            <td className="text-center text-green-600 font-medium">{Number(row.present)}</td>
+                            <td className="text-center text-red-600 font-medium">{Number(row.absent)}</td>
+                            <td className="text-center text-amber-600 font-medium">{Number(row.late)}</td>
+                            <td className="text-center text-muted-foreground">{Number(row.total)}</td>
+                            <td className="text-center">
+                              <div className="flex items-center gap-2 justify-center">
+                                <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full ${
+                                      row.attendancePercent >= 75 ? "bg-green-500" :
+                                      row.attendancePercent >= 50 ? "bg-amber-500" : "bg-red-500"
+                                    }`}
+                                    style={{ width: `${row.attendancePercent}%` }}
+                                  />
+                                </div>
+                                <span className={`text-sm font-semibold ${
+                                  row.attendancePercent >= 75 ? "text-green-600" :
+                                  row.attendancePercent >= 50 ? "text-amber-600" : "text-red-600"
+                                }`}>{row.attendancePercent}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="text-center py-10 text-muted-foreground">
+                      <BarChart2 className="w-10 h-10 mx-auto mb-2 opacity-20" />
+                      <p className="text-sm">No attendance records for this class and month</p>
+                      <p className="text-xs mt-1">Teachers must mark attendance from the Teacher Portal first</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="text-center py-16 text-muted-foreground">
+                <BarChart2 className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p className="font-medium">Select a class and month to view attendance</p>
+              </div>
+            )}
           </TabsContent>
 
           {/* Notifications */}
