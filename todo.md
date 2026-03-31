@@ -482,36 +482,10 @@
 - [ ] Parents see child's progress in context of selected exam
 - [ ] Notifications reference the specific exam name
 
-## Phase 13: Universal AI Expert Knowledge Center Rebrand
+## Phase 14: Narration Scripts Knowledge Base
 
-### Identity & Branding
-- [x] Rename platform to "ExamForge AI" — Universal AI Expert Knowledge Center
-- [x] Update Layout.tsx sidebar logo and title to ExamForge AI
-- [x] Update mobile header branding
-- [x] Update OnboardingWizard copy to be exam-agnostic
-- [x] Update AvatarTutor welcome message to be universal
-
-### Landing Page Overhaul
-- [x] New hero: "Master Any Exam with AI-Powered Expert Guidance"
-- [x] Exam catalog grid on landing page (JEE, NEET, GATE, UPSC, CAT, Board Exams)
-- [x] Platform stats: institutes, students, exams, questions
-- [x] Feature highlights: AI Avatar, Proctoring, Analytics, Multi-exam, API
-- [x] How it works for institutes and students
-- [x] CTA for institutes to onboard
-
-### Exam Catalog Page (/exams)
-- [x] Grid of all supported exams with category filters (Engineering, Medical, Civil Services, Management, Board)
-- [x] Each exam card: name, description, subjects, chapters, status (Active/Coming Soon)
-- [x] JEE card marked as "Featured" with sub-brand badge
-- [x] Click exam → exam-specific landing sub-page
-
-### JEE Sub-brand Sub-page (/exams/jee)
-- [x] JEE-specific landing with existing 80-chapter content
-- [x] Links to Physics/Chemistry/Mathematics subjects
-- [x] JEE study plan, mock tests, performance dashboard
-- [x] "Powered by ExamForge AI" sub-brand treatment
-
-### Navigation Updates
-- [x] Add "Exam Catalog" to sidebar nav
-- [x] Sidebar "Subjects" section becomes context-aware (shows JEE subjects when in JEE context)
-- [x] Add "Exams" top-level nav item
+- [x] Generate AI narration scripts for all 80 JEE chapters (Physics 25, Chemistry 28, Mathematics 27)
+- [x] Save scripts permanently to narration_scripts table (knowledge base — never regenerated)
+- [x] Each script has 9 sections: Introduction, Conceptual Explanation, Formulas & Derivations, Solved Examples, Advanced Concepts, Exam Tips, Common Mistakes, Quick Revision Summary, Mnemonics
+- [x] Total knowledge base: 185,485 words across 80 chapters
+- [x] Idempotent generation script at scripts/generate-narrations.mjs (skips already-generated chapters)

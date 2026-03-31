@@ -44,7 +44,7 @@ const ROLE_CONFIG = {
     color: "from-green-500 to-emerald-500",
     bg: "bg-green-500/10",
     border: "border-green-500/30",
-    description: "Learn from AI avatar Priya, take assessments, and track your exam preparation journey",
+    description: "Learn from AI avatar Priya, take assessments, and track your JEE journey",
     features: ["AI avatar lessons", "Chapter assessments", "Performance heatmap", "Score prediction"],
   },
   parent: {
@@ -114,7 +114,7 @@ function AcceptInviteFlow({ token }: { token: string }) {
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-2">You're Invited!</h1>
           <p className="text-muted-foreground">
-            You've been invited to join <strong className="text-foreground">{invite.instituteName || "ExamForge AI"}</strong> as a <strong className="text-foreground">{roleConfig.label}</strong>.
+            You've been invited to join <strong className="text-foreground">{invite.instituteName || "JEE Master Prep"}</strong> as a <strong className="text-foreground">{roleConfig.label}</strong>.
           </p>
         </div>
 
@@ -181,7 +181,7 @@ function SelfEnrollFlow() {
   const startOnboarding = trpc.authExt.startOnboarding.useMutation({
     onSuccess: () => {
       setStep("done");
-      toast.success("Enrollment successful! Welcome to ExamForge AI.");
+      toast.success("Enrollment successful! Welcome to JEE Master Prep.");
     },
     onError: (err: unknown) => {
       toast.error("Enrollment failed: " + (err instanceof Error ? err.message : String(err)));
@@ -204,7 +204,7 @@ function SelfEnrollFlow() {
             <CheckCircle2 className="h-12 w-12 text-green-400" />
           </div>
           <h1 className="text-3xl font-bold text-foreground">You're all set! 🎉</h1>
-          <p className="text-muted-foreground">Your account has been configured. Start your learning journey now.</p>
+          <p className="text-muted-foreground">Your account has been configured. Start your JEE journey now.</p>
           <Button onClick={() => setLocation("/")} size="lg" className="gap-2 w-full">
             <ArrowRight className="h-4 w-4" /> Go to Dashboard
           </Button>
