@@ -632,3 +632,15 @@
 - [x] Student dashboard: Today tab shows upcoming online classes with join links
 - [x] Student dashboard: Today tab shows today's lesson plan (objectives, homework)
 - [x] Student dashboard: Daily activities feed sorted by scheduled time
+
+## Phase 19: Bridge Courses, Low-Attendance Alerts, Parent Lesson Plans
+
+- [x] Server: erp.listBridgeCourses procedure for student (list approved/pending courses for student)
+- [x] Server: erp.checkAndSendAttendanceAlerts procedure (check all students <75%, create alerts, send email to parent + notify admin)
+- [x] Server: erp.getParentChildLessonPlans procedure (fetch lesson plans for child's enrolled class)
+- [x] Student dashboard: Bridge Courses tab wired to real data (AI suggestion card, approval status badge, progress tracking)
+- [x] Student dashboard: Bridge Courses tab shows teacher-approved courses with topic list and estimated hours
+- [x] Parent portal: Lesson Plans section wired to child's class lesson plans (read-only, homework highlighted)
+- [x] Parent portal: Show child's upcoming online classes
+- [x] Low-attendance background job: nightly cron check at 11 PM, flag <75%, create alert record, send email to parent + in-app notification to Institute Admin
+- [ ] Alert history tab in Institute Admin portal showing all low-attendance alerts (pending)

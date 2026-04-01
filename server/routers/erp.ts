@@ -1356,6 +1356,16 @@ export const bridgeCoursesRouter = router({
       if (input.status) conditions.push(sql`${bridgeCourses.status} = ${input.status}`);
       return await db.select().from(bridgeCourses).where(and(...conditions)).orderBy(desc(bridgeCourses.createdAt)).limit(50);
     }),
+
+  // Student self-service: list their own bridge courses (no instituteId needed)
+  listForStudent: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    return await db.select().from(bridgeCourses)
+      .where(eq(bridgeCourses.studentId, ctx.user.id))
+      .orderBy(desc(bridgeCourses.createdAt))
+      .limit(50);
+  }),
 });
 
 // ─── LOW ATTENDANCE ALERTS ROUTER ─────────────────────────────────────────────
@@ -1406,5 +1416,60 @@ export const attendanceAlertsRouter = router({
       const conditions: any[] = [eq(lowAttendanceAlerts.instituteId, input.instituteId)];
       if (input.month) conditions.push(eq(lowAttendanceAlerts.month, input.month));
       return await db.select().from(lowAttendanceAlerts).where(and(...conditions)).orderBy(desc(lowAttendanceAlerts.createdAt)).limit(100);
+    }),
+
+  // Send email notifications for unnotified alerts
+  sendAlertEmails: protectedProcedure
+    .input(z.object({ instituteId: z.number(), month: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { sendAttendanceAlertEmail } = await import("../email.js");
+      // Get unnotified alerts
+      const unnotified = await db.select().from(lowAttendanceAlerts)
+        .where(and(
+          eq(lowAttendanceAlerts.instituteId, input.instituteId),
+          eq(lowAttendanceAlerts.month, input.month),
+          eq(lowAttendanceAlerts.notifiedParent, false)
+        ));
+      let emailsSent = 0;
+      for (const alert of unnotified) {
+        try {
+          // Get student info
+          const [student] = await db.select({ name: users.name, email: users.email })
+            .from(users).where(eq(users.id, alert.studentId)).limit(1);
+          // Get parent links
+          const parentLinks = await db.select({ parentId: parentStudentLinks.parentId })
+            .from(parentStudentLinks)
+            .where(eq(parentStudentLinks.studentId, alert.studentId));
+          for (const link of parentLinks) {
+            const [parent] = await db.select({ name: users.name, email: users.email })
+              .from(users).where(eq(users.id, link.parentId)).limit(1);
+            if (parent?.email) {
+              await sendAttendanceAlertEmail({
+                to: parent.email,
+                parentName: parent.name ?? "Parent",
+                studentName: student?.name ?? "Your child",
+                attendancePercent: alert.attendancePercent,
+                month: alert.month,
+              });
+              emailsSent++;
+            }
+          }
+          // Mark as notified
+          await db.update(lowAttendanceAlerts)
+            .set({ notifiedParent: true, parentAlertSentAt: new Date() })
+            .where(eq(lowAttendanceAlerts.id, alert.id));
+        } catch { /* continue */ }
+      }
+      // Mark admin as notified
+      await db.update(lowAttendanceAlerts)
+        .set({ notifiedAdmin: true, adminAlertSentAt: new Date() })
+        .where(and(
+          eq(lowAttendanceAlerts.instituteId, input.instituteId),
+          eq(lowAttendanceAlerts.month, input.month),
+          eq(lowAttendanceAlerts.notifiedAdmin, false)
+        ));
+      return { emailsSent };
     }),
 });

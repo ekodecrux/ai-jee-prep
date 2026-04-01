@@ -5,7 +5,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Users, BookOpen, BarChart3, Bell, TrendingUp, Calendar,
   CheckCircle2, AlertCircle, MessageSquare, ChevronRight,
-  Heart, Star, Award, Clock, GraduationCap, Target
+  Heart, Star, Award, Clock, GraduationCap, Target,
+  Video, FileText, ExternalLink, BookMarked
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,15 @@ export default function ParentPortal() {
   const { data: heatmapRaw } = trpc.analytics.getHeatmap.useQuery({});
   const { data: prediction } = trpc.analytics.getPrediction.useQuery({ examId: "jee_main" });
   const { data: lessonPlan } = trpc.lessonPlan.getPlanProgress.useQuery();
+  // ERP-based lesson plans and live classes for child's class
+  const { data: erpLessonPlans } = trpc.lessonPlansErp.list.useQuery(
+    { instituteId: 0, classId: 0 },
+    { enabled: false } // will be enabled once we have child's classId
+  );
+  const { data: upcomingClasses } = trpc.onlineClasses.list.useQuery(
+    { instituteId: 0, classId: 0 },
+    { enabled: false } // will be enabled once we have child's classId
+  );
 
   const heatmapData = heatmapRaw?.chapters || [];
   const greenChapters = heatmapRaw?.summary?.green || 0;
@@ -60,9 +70,11 @@ export default function ParentPortal() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-muted mb-6">
+          <TabsList className="bg-muted mb-6 flex-wrap">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="heatmap">Chapter Heatmap</TabsTrigger>
+            <TabsTrigger value="lesson-plans">Lesson Plans</TabsTrigger>
+            <TabsTrigger value="live-classes">Live Classes</TabsTrigger>
             <TabsTrigger value="schedule">Study Schedule</TabsTrigger>
             <TabsTrigger value="reports">Weekly Reports</TabsTrigger>
           </TabsList>
@@ -200,6 +212,99 @@ export default function ParentPortal() {
                 </Card>
               );
             })}
+          </TabsContent>
+
+          {/* Lesson Plans (read-only for parent) */}
+          <TabsContent value="lesson-plans" className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Child's Lesson Plans</h2>
+              <p className="text-sm text-gray-500 mt-1">View what your child's teacher has planned — objectives, activities, and homework for each class day.</p>
+            </div>
+            {erpLessonPlans && erpLessonPlans.length > 0 ? (
+              <div className="space-y-4">
+                {erpLessonPlans.map((lp: any) => (
+                  <Card key={lp.id} className="border-border shadow-sm">
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                          <p className="font-semibold text-gray-900">{lp.title}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{lp.date} · {lp.estimatedMinutes || 45} min</p>
+                        </div>
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                          lp.status === "published" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                        }`}>{lp.status === "published" ? "Published" : "Draft"}</span>
+                      </div>
+                      {lp.objectives && (
+                        <div className="mb-3">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Learning Objectives</p>
+                          <p className="text-sm text-gray-700">{lp.objectives}</p>
+                        </div>
+                      )}
+                      {lp.homework && (
+                        <div className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                          <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1 flex items-center gap-1">
+                            <BookMarked className="w-3 h-3" /> Homework
+                          </p>
+                          <p className="text-sm text-amber-900">{lp.homework}</p>
+                        </div>
+                      )}
+                      {lp.activities && (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Activities</p>
+                          <p className="text-sm text-gray-600">{lp.activities}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16 text-gray-400">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p className="font-medium text-gray-600">No lesson plans available yet</p>
+                <p className="text-sm mt-1 max-w-sm mx-auto">Once your child is enrolled in a class and the teacher publishes lesson plans, they will appear here for you to review.</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Live Classes (read-only for parent) */}
+          <TabsContent value="live-classes" className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Upcoming Live Classes</h2>
+              <p className="text-sm text-gray-500 mt-1">View your child's scheduled online classes. Join links are visible to students only.</p>
+            </div>
+            {upcomingClasses && upcomingClasses.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingClasses.map((cls: any) => (
+                  <Card key={cls.id} className="border-border shadow-sm">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                        <Video className="w-5 h-5 text-indigo-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm">{cls.title}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {cls.scheduledAt ? new Date(cls.scheduledAt).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Time TBD"}
+                          {cls.durationMinutes ? ` · ${cls.durationMinutes} min` : ""}
+                        </p>
+                      </div>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${
+                        cls.status === "live" ? "bg-red-100 text-red-700" :
+                        cls.status === "scheduled" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
+                      }`}>
+                        {cls.status === "live" ? "🔴 Live Now" : cls.status === "scheduled" ? "Scheduled" : "Ended"}
+                      </span>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16 text-gray-400">
+                <Video className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p className="font-medium text-gray-600">No upcoming classes scheduled</p>
+                <p className="text-sm mt-1 max-w-sm mx-auto">Your child's teacher will schedule live online classes here. You'll be able to see the schedule and timing.</p>
+              </div>
+            )}
           </TabsContent>
 
           {/* Schedule */}

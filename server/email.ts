@@ -225,3 +225,42 @@ export async function testSmtpConnection(): Promise<{ success: boolean; error?: 
     return { success: false, error: err?.message || "SMTP connection failed" };
   }
 }
+
+// ─── Attendance Alert Email ───────────────────────────────────────────────────
+export async function sendAttendanceAlertEmail(opts: {
+  to: string;
+  parentName: string;
+  studentName: string;
+  attendancePercent: number;
+  month: string;
+}) {
+  const [year, month] = opts.month.split("-");
+  const monthLabel = new Date(parseInt(year), parseInt(month) - 1, 1).toLocaleString("en-IN", { month: "long", year: "numeric" });
+  const urgency = opts.attendancePercent < 50 ? "🔴 Critical" : opts.attendancePercent < 65 ? "🟠 Warning" : "🟡 Low";
+  const body = `
+    <p>Dear <strong>${opts.parentName}</strong>,</p>
+    <p>This is an automated attendance alert from your child's institute regarding <strong>${opts.studentName}</strong>.</p>
+    <div class="info-box">
+      <p>${urgency} Attendance Alert — ${monthLabel}</p>
+      <p>📊 Current Attendance: <strong>${opts.attendancePercent}%</strong></p>
+      <p>⚠️ Minimum Required: <strong>75%</strong></p>
+      <p>📉 Shortfall: <strong>${Math.max(0, 75 - opts.attendancePercent).toFixed(1)}%</strong> below threshold</p>
+    </div>
+    <p>Low attendance can significantly impact your child's academic performance and eligibility for exams. We strongly recommend:</p>
+    <div class="info-box">
+      <p>✅ Ensure regular attendance going forward</p>
+      <p>📞 Contact the institute admin if there are medical or personal reasons</p>
+      <p>📚 Review missed lesson plans and assignments on the parent portal</p>
+    </div>
+    <p>Please log in to the parent portal to view your child's full attendance record and lesson plans.</p>
+    <div class="divider"></div>
+    <p style="font-size:13px;color:#64748b;">This is an automated alert. Please contact your institute admin for any queries.</p>
+  `;
+  const transporter = createTransporter();
+  return await transporter.sendMail({
+    from: FROM,
+    to: opts.to,
+    subject: `⚠️ Attendance Alert: ${opts.studentName} — ${monthLabel} (${opts.attendancePercent}%)`,
+    html: baseTemplate("Attendance Alert", body),
+  });
+}

@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import v1Router from "../api/v1";
 import { runAllNotificationTriggers } from "../jobs/notificationTriggers";
+import { scheduleAttendanceAlertJob } from "../jobs/attendanceAlertJob";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -86,6 +87,9 @@ async function startServer() {
         console.warn("[DailyJob] Notification trigger error:", err);
       }
     }, TWENTY_FOUR_HOURS);
+
+    // Schedule nightly attendance alert job (runs at 11 PM)
+    scheduleAttendanceAlertJob();
   });
 }
 

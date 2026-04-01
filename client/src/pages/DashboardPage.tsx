@@ -741,7 +741,102 @@ function LessonPlansStudentTab() {
   );
 }
 
-// ─── Main DashboardPage ────────────────────────────────────────────────────────
+//// ─── Bridge Courses Tab (Student) ──────────────────────────────────────────────
+function BridgeCoursesStudentTab() {
+  const { data: courses, isLoading } = trpc.bridgeCourses.listForStudent.useQuery();
+
+  const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+    pending:   { label: "Awaiting Teacher Approval", color: "bg-amber-100 text-amber-700", icon: Clock },
+    approved:  { label: "Approved — Start Now",       color: "bg-green-100 text-green-700", icon: CheckCircle },
+    rejected:  { label: "Not Recommended",            color: "bg-red-100 text-red-700",   icon: AlertCircle },
+    completed: { label: "Completed",                  color: "bg-indigo-100 text-indigo-700", icon: Trophy },
+  };
+
+  if (isLoading) return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-32 bg-gray-100 rounded-xl animate-pulse" />)}</div>;
+
+  if (!courses || courses.length === 0) return (
+    <div className="text-center py-20 text-gray-400">
+      <Brain className="w-14 h-14 mx-auto mb-4 opacity-20" />
+      <p className="font-semibold text-gray-600 text-lg">No bridge courses yet</p>
+      <p className="text-sm mt-2 max-w-sm mx-auto">Your teacher will suggest AI-powered bridge courses when they identify knowledge gaps in your performance. Approved courses will appear here.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Bridge Courses</h2>
+        <p className="text-sm text-gray-500 mt-1">AI-powered remedial courses suggested by your teacher to fill knowledge gaps</p>
+      </div>
+      <div className="grid gap-4">
+        {courses.map((course: any) => {
+          const cfg = statusConfig[course.status] ?? statusConfig.pending;
+          const StatusIcon = cfg.icon;
+          const topics: string[] = Array.isArray(course.weakTopics) ? course.weakTopics : [];
+          // Parse AI suggestion for display
+          const aiLines = (course.aiSuggestion ?? "").split("\n").filter(Boolean);
+          const courseTitle = aiLines[0] ?? course.reason ?? "Bridge Course";
+          const courseDesc = aiLines[1] ?? "";
+          return (
+            <Card key={course.id} className={`border-l-4 shadow-sm ${
+              course.status === "approved" ? "border-l-green-500" :
+              course.status === "pending" ? "border-l-amber-500" :
+              course.status === "completed" ? "border-l-indigo-500" : "border-l-red-400"
+            }`}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-base">{courseTitle}</p>
+                    {courseDesc && <p className="text-sm text-gray-500 mt-1">{courseDesc}</p>}
+                  </div>
+                  <span className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-medium shrink-0 ${cfg.color}`}>
+                    <StatusIcon className="w-3 h-3" /> {cfg.label}
+                  </span>
+                </div>
+
+                {topics.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Topics to Cover</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {topics.map((t: string, i: number) => (
+                        <span key={i} className="text-xs px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-full font-medium">{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {course.reason && (
+                  <div className="p-3 bg-gray-50 rounded-lg mb-3">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Why This Course</p>
+                    <p className="text-sm text-gray-700 mt-0.5">{course.reason}</p>
+                  </div>
+                )}
+
+                {course.teacherNote && (
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Teacher's Note</p>
+                    <p className="text-sm text-blue-800 mt-0.5">{course.teacherNote}</p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                  <p className="text-xs text-gray-400">Suggested {new Date(course.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                  {course.status === "approved" && (
+                    <Button size="sm" className="h-7 px-3 text-xs gap-1 bg-green-600 hover:bg-green-700">
+                      <ArrowRight className="w-3 h-3" /> Start Course
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main DashboardPage ──────────────────────────────────────────────────────
 export default function DashboardPage() {
   const [location] = useLocation();
   const searchParams = new URLSearchParams(location.split("?")[1] || "");
@@ -797,7 +892,7 @@ export default function DashboardPage() {
         {activeTab === "lesson-plans" && <LessonPlansStudentTab />}
         {activeTab === "assessments" && <PlaceholderTab icon={FileCheck} title="Assessments" description="Chapter assessments and tests assigned by your teacher will appear here." />}
         {activeTab === "assignments" && <PlaceholderTab icon={FileText} title="Assignments" description="Assignments from your teachers will appear here with due dates and submission status." />}
-        {activeTab === "bridge" && <PlaceholderTab icon={Brain} title="Bridge Courses" description="AI-powered bridge course suggestions approved by your teacher will appear here to help fill knowledge gaps." />}
+        {activeTab === "bridge" && <BridgeCoursesStudentTab />}
       </div>
     </PlatformLayout>
   );
