@@ -385,6 +385,7 @@ export default function InstituteAdminPortal() {
             <TabsTrigger value="bulk">Bulk Generate</TabsTrigger>
             <TabsTrigger value="attendance">Attendance Summary</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            <TabsTrigger value="alerts">⚠ Alerts</TabsTrigger>
           </TabsList>
 
           {/* Overview */}
@@ -1042,8 +1043,125 @@ export default function InstituteAdminPortal() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Alerts Tab */}
+          <TabsContent value="alerts" className="space-y-5">
+            <AlertsTab instituteId={instituteId} />
+          </TabsContent>
         </Tabs>
       </div>
     </PlatformLayout>
+  );
+}
+
+// ─── Alerts Tab Component ─────────────────────────────────────────────────────
+function AlertsTab({ instituteId }: { instituteId: number }) {
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const alerts = trpc.attendanceAlertsAdmin.listForAdmin.useQuery({ instituteId, month });
+  const resolveAlert = trpc.attendanceAlertsAdmin.resolve.useMutation({
+    onSuccess: () => { toast.success("Alert marked as resolved"); alerts.refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const unresolved = alerts.data?.filter(a => !a.resolvedAt) ?? [];
+  const resolved = alerts.data?.filter(a => !!a.resolvedAt) ?? [];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Low-Attendance Alerts</h2>
+          <p className="text-sm text-muted-foreground">Students flagged below 75% attendance</p>
+        </div>
+        <Input
+          type="month"
+          value={month}
+          onChange={e => setMonth(e.target.value)}
+          className="w-40"
+        />
+      </div>
+
+      {alerts.isLoading && (
+        <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
+          <Loader2 className="w-5 h-5 animate-spin" /> Loading alerts...
+        </div>
+      )}
+
+      {!alerts.isLoading && unresolved.length === 0 && resolved.length === 0 && (
+        <Card className="border-border bg-card">
+          <CardContent className="py-12 text-center">
+            <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-3" />
+            <p className="text-foreground font-medium">No alerts for {month}</p>
+            <p className="text-sm text-muted-foreground mt-1">All students are above 75% attendance this month.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {unresolved.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-red-600 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" /> Open Alerts ({unresolved.length})
+          </h3>
+          {unresolved.map(alert => (
+            <Card key={alert.id} className="border-red-200 bg-red-50/30">
+              <CardContent className="py-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                    <GraduationCap className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground truncate">{alert.studentName ?? `Student #${alert.studentId}`}</p>
+                    <p className="text-xs text-muted-foreground">{alert.studentEmail}</p>
+                    <div className="flex items-center gap-3 mt-1 flex-wrap">
+                      <Badge variant="destructive" className="text-xs">{alert.attendancePercent}% attendance</Badge>
+                      <span className="text-xs text-muted-foreground">Class: {alert.className}</span>
+                      <span className="text-xs text-muted-foreground">Month: {alert.month}</span>
+                    </div>
+                    <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                      <span>Admin notified: {alert.notifiedAdmin ? `✓ ${alert.adminAlertSentAt ? new Date(alert.adminAlertSentAt).toLocaleDateString() : "yes"}` : "✗ No"}</span>
+                      <span>Parent notified: {alert.notifiedParent ? `✓ ${alert.parentAlertSentAt ? new Date(alert.parentAlertSentAt).toLocaleDateString() : "yes"}` : "✗ No"}</span>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 border-green-300 text-green-700 hover:bg-green-50"
+                  onClick={() => resolveAlert.mutate({ alertId: alert.id })}
+                  disabled={resolveAlert.isPending}
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-1" /> Resolve
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {resolved.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4" /> Resolved ({resolved.length})
+          </h3>
+          {resolved.map(alert => (
+            <Card key={alert.id} className="border-border bg-muted/30 opacity-70">
+              <CardContent className="py-3 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{alert.studentName ?? `Student #${alert.studentId}`}</p>
+                  <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
+                    <span>{alert.attendancePercent}% attendance</span>
+                    <span>{alert.className}</span>
+                    <span>Resolved: {alert.resolvedAt ? new Date(alert.resolvedAt).toLocaleDateString() : "—"}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

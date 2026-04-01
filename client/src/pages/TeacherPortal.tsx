@@ -282,6 +282,7 @@ export default function TeacherPortal() {
             <TabsTrigger value="proctoring">Proctoring</TabsTrigger>
             <TabsTrigger value="doubts">Doubt Board</TabsTrigger>
             <TabsTrigger value="assessments">Assessments</TabsTrigger>
+            <TabsTrigger value="approvals">Bridge Approvals</TabsTrigger>
           </TabsList>
 
           {/* ─── Schedule ─────────────────────────────────────────────────── */}
@@ -857,8 +858,158 @@ export default function TeacherPortal() {
               <p className="text-sm mt-1">Create chapter-wise or topic-wise assessments for your class</p>
             </div>
           </TabsContent>
+
+          {/* ─── Bridge Course Approvals ──────────────────────────────────── */}
+          <TabsContent value="approvals" className="space-y-6">
+            {myInstituteId ? (
+              <BridgeApprovalTab instituteId={myInstituteId} />
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <AlertCircle className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p>No institute context found. Please ensure you are assigned to an institute.</p>
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </div>
     </PlatformLayout>
+  );
+}
+
+// ─── Bridge Course Approval Tab ───────────────────────────────────────────────
+function BridgeApprovalTab({ instituteId }: { instituteId: number }) {
+  const pending = trpc.bridgeCourseApproval.listPendingForTeacher.useQuery({ instituteId });
+  const approveReject = trpc.bridgeCourseApproval.approveReject.useMutation({
+    onSuccess: (_, vars) => {
+      toast.success(vars.action === "approved" ? "Bridge course approved!" : "Bridge course rejected.");
+      pending.refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const [feedbackMap, setFeedbackMap] = useState<Record<number, string>>({});
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const allItems = pending.data ?? [];
+  const pendingItems = allItems.filter(i => i.status === "pending");
+  const reviewedItems = allItems.filter(i => i.status !== "pending");
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">Bridge Course Approvals</h2>
+        <p className="text-sm text-muted-foreground">AI-suggested remedial courses for your students — review and approve or reject</p>
+      </div>
+
+      {pending.isLoading && (
+        <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
+          <RefreshCw className="w-5 h-5 animate-spin" /> Loading suggestions...
+        </div>
+      )}
+
+      {!pending.isLoading && allItems.length === 0 && (
+        <Card className="border-border bg-card">
+          <CardContent className="py-12 text-center">
+            <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-3" />
+            <p className="font-medium text-foreground">No bridge course suggestions yet</p>
+            <p className="text-sm text-muted-foreground mt-1">AI will suggest remedial courses based on student performance.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {pendingItems.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-amber-600 flex items-center gap-2">
+            <Clock className="w-4 h-4" /> Pending Review ({pendingItems.length})
+          </h3>
+          {pendingItems.map(item => (
+            <Card key={item.id} className="border-amber-200 bg-amber-50/20">
+              <CardContent className="py-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-foreground">{item.studentName ?? `Student #${item.studentId}`}</p>
+                      <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">Pending</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.studentEmail}</p>
+                    <p className="text-sm text-foreground mt-2 font-medium">Reason: <span className="font-normal text-muted-foreground">{item.reason}</span></p>
+                    {item.weakTopics && (
+                      <p className="text-xs text-muted-foreground mt-1">Weak topics: {item.weakTopics}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                    className="text-xs text-blue-600 hover:underline shrink-0"
+                  >
+                    {expandedId === item.id ? "Hide" : "View"} AI suggestion
+                  </button>
+                </div>
+
+                {expandedId === item.id && item.aiSuggestion && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900 whitespace-pre-wrap">
+                    {item.aiSuggestion}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Feedback note to student (optional)</Label>
+                  <Input
+                    placeholder="e.g. Focus on chapters 3-5 first..."
+                    value={feedbackMap[item.id] ?? ""}
+                    onChange={e => setFeedbackMap(m => ({ ...m, [item.id]: e.target.value }))}
+                    className="text-sm"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => approveReject.mutate({ bridgeCourseId: item.id, action: "approved", teacherNote: feedbackMap[item.id] })}
+                    disabled={approveReject.isPending}
+                  >
+                    <CheckCircle2 className="w-4 h-4" /> Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 border-red-300 text-red-600 hover:bg-red-50"
+                    onClick={() => approveReject.mutate({ bridgeCourseId: item.id, action: "rejected", teacherNote: feedbackMap[item.id] })}
+                    disabled={approveReject.isPending}
+                  >
+                    <XSquare className="w-4 h-4" /> Reject
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {reviewedItems.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4" /> Reviewed ({reviewedItems.length})
+          </h3>
+          {reviewedItems.map(item => (
+            <Card key={item.id} className="border-border bg-muted/20 opacity-75">
+              <CardContent className="py-3 flex items-center gap-3">
+                <Badge
+                  className={`text-xs shrink-0 ${item.status === "approved" ? "bg-green-100 text-green-700 border-green-200" : "bg-red-100 text-red-700 border-red-200"}`}
+                  variant="outline"
+                >
+                  {item.status === "approved" ? "✓ Approved" : "✗ Rejected"}
+                </Badge>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{item.studentName ?? `Student #${item.studentId}`}</p>
+                  <p className="text-xs text-muted-foreground">{item.reason}</p>
+                  {item.teacherNote && <p className="text-xs text-blue-600 mt-0.5">Note: {item.teacherNote}</p>}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

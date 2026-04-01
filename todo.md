@@ -644,3 +644,31 @@
 - [x] Parent portal: Show child's upcoming online classes
 - [x] Low-attendance background job: nightly cron check at 11 PM, flag <75%, create alert record, send email to parent + in-app notification to Institute Admin
 - [ ] Alert history tab in Institute Admin portal showing all low-attendance alerts (pending)
+
+## Phase 20: Alerts, Bridge Approvals, Webcam Proctoring
+
+- [ ] Server: attendanceAlerts.listForAdmin (list all alerts for institute, with student/class/parent info)
+- [ ] Server: bridgeCourses.approveReject (teacher approves/rejects with optional feedback note)
+- [ ] Server: bridgeCourses.listPendingForTeacher (list pending bridge suggestions for teacher's classes)
+- [ ] Institute Admin: Alerts tab with low-attendance alert history table
+- [ ] Institute Admin: Alert table shows student name, class, %, date flagged, parent notified status
+- [ ] Teacher portal: Approvals tab with pending bridge course queue
+- [ ] Teacher portal: Approve/Reject buttons with feedback note dialog
+- [ ] Student assessment engine: webcam permission request before webcam-required tests
+- [ ] Student assessment engine: camera feed overlay (small PiP) during test
+- [ ] Student assessment engine: face-detection warnings (no face / multiple faces)
+- [ ] Student assessment engine: proctoring event log saved to DB
+- [ ] Student assessment engine: 3 warnings = auto-submit test
+
+## Phase 20: Alerts, Bridge Approvals, Webcam Proctoring
+
+- [x] Institute Admin portal: Alerts tab listing all low-attendance alerts (student, class, %, date, parent notification status)
+- [x] Teacher portal: Bridge Approvals tab with pending AI-suggested bridge courses per student
+- [x] Teacher portal: One-click Approve/Reject with optional feedback note to student
+- [x] Teacher portal: Reviewed history section showing approved/rejected courses
+- [x] Assessment engine: Webcam proctoring overlay (camera permission request, PiP feed, face-detection)
+- [x] Assessment engine: Face absence detection with canvas brightness analysis every 5 seconds
+- [x] Assessment engine: 3-violation auto-submit with proctoring event log
+- [x] Assessment engine: Proctoring summary shown in result page (violations count + event log)
+- [x] Assessment engine: Intro page shows webcam proctoring notice for chapter tests
+- [x] Assessment engine: Minimizable PiP camera widget with green/red face-status indicator

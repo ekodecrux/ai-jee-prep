@@ -1473,3 +1473,136 @@ export const attendanceAlertsRouter = router({
       return { emailsSent };
     }),
 });
+
+// ─── Attendance Alert Admin Router ────────────────────────────────────────────
+export const attendanceAlertsAdminRouter = router({
+  /** List all low-attendance alerts for an institute (Institute Admin view) */
+  listForAdmin: instituteAdminProcedure
+    .input(z.object({
+      instituteId: z.number(),
+      month: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const conditions = [eq(lowAttendanceAlerts.instituteId, input.instituteId)];
+      if (input.month) conditions.push(eq(lowAttendanceAlerts.month, input.month));
+
+      const alerts = await db.select({
+        id: lowAttendanceAlerts.id,
+        studentId: lowAttendanceAlerts.studentId,
+        classId: lowAttendanceAlerts.classId,
+        month: lowAttendanceAlerts.month,
+        attendancePercent: lowAttendanceAlerts.attendancePercent,
+        notifiedAdmin: lowAttendanceAlerts.notifiedAdmin,
+        notifiedParent: lowAttendanceAlerts.notifiedParent,
+        adminAlertSentAt: lowAttendanceAlerts.adminAlertSentAt,
+        parentAlertSentAt: lowAttendanceAlerts.parentAlertSentAt,
+        resolvedAt: lowAttendanceAlerts.resolvedAt,
+        createdAt: lowAttendanceAlerts.createdAt,
+        studentName: users.name,
+        studentEmail: users.email,
+      })
+        .from(lowAttendanceAlerts)
+        .leftJoin(users, eq(users.id, lowAttendanceAlerts.studentId))
+        .where(and(...conditions))
+        .orderBy(desc(lowAttendanceAlerts.createdAt))
+        .limit(200);
+
+      const classIds = Array.from(new Set(alerts.map(a => a.classId)));
+      const classMap: Record<number, string> = {};
+      if (classIds.length > 0) {
+        const classRows = await db.select({ id: classes.id, name: classes.name })
+          .from(classes).where(inArray(classes.id, classIds));
+        for (const c of classRows) classMap[c.id] = c.name;
+      }
+
+      return alerts.map(a => ({ ...a, className: classMap[a.classId] ?? `Class ${a.classId}` }));
+    }),
+
+  resolve: instituteAdminProcedure
+    .input(z.object({ alertId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(lowAttendanceAlerts)
+        .set({ resolvedAt: new Date() })
+        .where(eq(lowAttendanceAlerts.id, input.alertId));
+      return { success: true };
+    }),
+});
+
+// ─── Bridge Course Teacher Approval Router ────────────────────────────────────
+export const bridgeCourseApprovalRouter = router({
+  listPendingForTeacher: teacherProcedure
+    .input(z.object({ instituteId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const teacherClasses = await db.select({ classId: teacherClassSubjects.classId })
+        .from(teacherClassSubjects)
+        .where(and(
+          eq(teacherClassSubjects.teacherId, ctx.user.id),
+          eq(teacherClassSubjects.instituteId, input.instituteId)
+        ));
+      const classIds = Array.from(new Set(teacherClasses.map(tc => tc.classId)));
+
+      let studentIds: number[] = [];
+      if (classIds.length > 0) {
+        const enrollments = await db.select({ studentId: classEnrollments.studentId })
+          .from(classEnrollments).where(inArray(classEnrollments.classId, classIds));
+        studentIds = Array.from(new Set(enrollments.map(e => e.studentId)));
+      }
+
+      if (studentIds.length === 0) return [];
+
+      const rows = await db.select({
+        id: bridgeCourses.id,
+        studentId: bridgeCourses.studentId,
+        chapterId: bridgeCourses.chapterId,
+        reason: bridgeCourses.reason,
+        aiSuggestion: bridgeCourses.aiSuggestion,
+        weakTopics: bridgeCourses.weakTopics,
+        status: bridgeCourses.status,
+        teacherNote: bridgeCourses.teacherNote,
+        createdAt: bridgeCourses.createdAt,
+        studentName: users.name,
+        studentEmail: users.email,
+      })
+        .from(bridgeCourses)
+        .leftJoin(users, eq(users.id, bridgeCourses.studentId))
+        .where(and(
+          inArray(bridgeCourses.studentId, studentIds),
+          eq(bridgeCourses.instituteId, input.instituteId)
+        ))
+        .orderBy(desc(bridgeCourses.createdAt))
+        .limit(100);
+
+      return rows;
+    }),
+
+  approveReject: teacherProcedure
+    .input(z.object({
+      bridgeCourseId: z.number(),
+      action: z.enum(["approved", "rejected"]),
+      teacherNote: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      await db.update(bridgeCourses)
+        .set({
+          status: input.action,
+          teacherId: ctx.user.id,
+          teacherNote: input.teacherNote ?? null,
+          approvedAt: input.action === "approved" ? new Date() : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(bridgeCourses.id, input.bridgeCourseId));
+
+      return { success: true };
+    }),
+});
