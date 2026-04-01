@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import PlatformLayout from "@/components/PlatformLayout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
@@ -140,26 +141,12 @@ export default function TeacherPortal() {
   }, [attRecords]);
 
   return (
-    <div className="page-enter min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-teal-500/10 flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-teal-600" />
-            </div>
-            <div>
-              <h1 className="font-bold text-foreground">Teacher Portal</h1>
-              <p className="text-xs text-muted-foreground">Manage classes, attendance, and assessments</p>
-            </div>
-          </div>
-          <Badge variant="outline" className="text-teal-600 border-teal-300 bg-teal-50">
-            <GraduationCap className="w-3 h-3 mr-1" /> Teacher
-          </Badge>
+    <PlatformLayout activeTab={activeTab} onTabChange={setActiveTab}>
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Teacher Dashboard</h1>
+          <p className="text-gray-500 text-sm mt-1">Manage your classes, attendance, lesson plans, and assessments</p>
         </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
@@ -532,6 +519,6 @@ export default function TeacherPortal() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </PlatformLayout>
   );
 }

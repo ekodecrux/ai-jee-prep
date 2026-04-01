@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PlatformLayout from "@/components/PlatformLayout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Link } from "wouter";
@@ -83,29 +84,12 @@ export default function SuperAdminPortal() {
   ];
 
   return (
-    <div className="page-enter min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-purple-500/20 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-purple-400" />
-            </div>
-            <div>
-              <h1 className="font-bold text-foreground">Super Admin Portal</h1>
-              <p className="text-xs text-muted-foreground">Universal Knowledge Platform — SaaS Management</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-purple-400 border-purple-400/30 bg-purple-400/10">
-              <Shield className="w-3 h-3 mr-1" /> Super Admin
-            </Badge>
-            <span className="text-sm text-muted-foreground">{user?.name}</span>
-          </div>
+    <PlatformLayout activeTab={activeTab} onTabChange={setActiveTab}>
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Super Admin Portal</h1>
+          <p className="text-gray-500 text-sm mt-1">Universal Knowledge Platform — SaaS Management</p>
         </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {stats.map((s) => (
@@ -490,6 +474,6 @@ export default function SuperAdminPortal() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </PlatformLayout>
   );
 }

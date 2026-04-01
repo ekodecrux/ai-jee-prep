@@ -569,3 +569,56 @@
 - [x] erp.getAttendance procedure (fetch attendance for class+date)
 - [x] erp.getMonthlyAttendanceSummary procedure (per-student monthly stats)
 - [ ] erp.getParentStudentLinks procedure (list parent-student links for an institute)
+
+## Phase 17: Student/Parent/Teacher Advanced Features
+
+### Database Schema
+- [ ] online_classes table: id, instituteId, classId, subjectId, teacherId, title, description, meetingUrl, scheduledAt, durationMinutes, status (scheduled|live|ended), recordingUrl
+- [ ] lesson_plans table: id, instituteId, classId, subjectId, teacherId, date, title, objectives, activities, resources, homework, status (draft|published), isAiGenerated
+- [ ] bridge_courses table: id, instituteId, studentId, teacherId, chapterId, reason, aiSuggestion, status (pending|approved|rejected|completed), createdAt
+- [ ] low_attendance_alerts table: id, instituteId, studentId, attendancePercent, alertSentAt, notifiedAdmin, notifiedParent
+
+### Server Procedures
+- [ ] erp.createOnlineClass (teacher creates class with meeting link)
+- [ ] erp.listOnlineClasses (for teacher/student/parent filtered by classId)
+- [ ] erp.createLessonPlan (manual lesson plan creation by teacher)
+- [ ] erp.autoGenerateLessonPlan (AI-powered lesson plan generation)
+- [ ] erp.listLessonPlans (for teacher/student/parent by classId+date range)
+- [ ] erp.getStudentAttendanceCalendar (per-student daily attendance for heatmap)
+- [ ] erp.getStudentChapterPerformance (per-chapter scores for heatmap)
+- [ ] erp.getParentDashboard (child attendance, grades, lesson plans, upcoming tests)
+- [ ] erp.suggestBridgeCourse (AI analyzes performance and suggests bridge topics)
+- [ ] erp.approveBridgeCourse (teacher approves/rejects AI suggestion)
+- [ ] erp.checkLowAttendance (scan all students, flag <75%, send alerts)
+
+### Student Portal
+- [ ] Attendance calendar heatmap (monthly grid, green=present, red=absent, amber=late)
+- [ ] Monthly attendance percentage badge
+- [ ] Chapter performance heatmap (80 chapters, color by score %)
+- [ ] Daily activities feed: today's online classes + assigned tests + lesson plan
+- [ ] Webcam-enabled test attempt UI (camera permission request, proctoring overlay)
+- [ ] Bridge course suggestions card (shows AI-approved suggestions)
+
+### Parent Portal
+- [ ] Dedicated parent dashboard page (/parent-portal)
+- [ ] Child selector (if parent linked to multiple students)
+- [ ] Child attendance summary + calendar heatmap
+- [ ] Assignment grades table
+- [ ] Lesson plan read-only view (today + upcoming week)
+- [ ] Upcoming mock test schedule
+- [ ] Low-attendance alert banner
+
+### Teacher Portal
+- [ ] Online class creation form (title, subject, class, date/time, meeting URL, duration)
+- [ ] Upcoming classes list with join/edit/cancel actions
+- [ ] Test creation form (title, class, subject, questions, duration, webcam required toggle)
+- [ ] Lesson plan builder: manual form (objectives, activities, resources, homework)
+- [ ] AI auto-generate lesson plan button (selects chapter, calls LLM)
+- [ ] Published lesson plans list visible to students and parents
+- [ ] Bridge course approval queue (approve/reject AI suggestions per student)
+
+### Low-Attendance Alerts
+- [ ] Auto-scan trigger (manual from Institute Admin + scheduled)
+- [ ] In-app notification to Institute Admin for flagged students
+- [ ] Email alert to linked parent(s) of flagged student
+- [ ] Alert history log in Institute Admin portal

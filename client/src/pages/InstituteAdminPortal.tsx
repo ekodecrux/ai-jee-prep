@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
+import PlatformLayout from "@/components/PlatformLayout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Users, BookOpen, Upload, Plus, GraduationCap, UserCheck,
   BarChart3, Bell, Key, FileText, ChevronRight, Download,
   School, Calendar, ClipboardList, Settings, AlertCircle,
-  Zap, CheckCircle2, Loader2, RefreshCw, Link2, BookMarked,
-  UserX, UserCheck2, Pencil, Trash2, Search, UserPlus, Link2 as LinkIcon, BarChart2
+  Zap, CheckCircle2, Loader2, RefreshCw, BookMarked,
+  UserX, UserCheck2, Pencil, Trash2, Search, UserPlus, BarChart2, Link2 as LinkIcon
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -130,26 +131,12 @@ export default function InstituteAdminPortal() {
   };
 
   return (
-    <div className="page-enter min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/20 flex items-center justify-center">
-              <School className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <h1 className="font-bold text-foreground">Institute Admin Portal</h1>
-              <p className="text-xs text-muted-foreground">Manage your institution's JEE preparation program</p>
-            </div>
-          </div>
-          <Badge variant="outline" className="text-blue-400 border-blue-400/30 bg-blue-400/10">
-            <School className="w-3 h-3 mr-1" /> Institute Admin
-          </Badge>
+    <PlatformLayout activeTab={activeTab} onTabChange={setActiveTab}>
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Institute Admin Portal</h1>
+          <p className="text-gray-500 text-sm mt-1">Manage your institution's users, classes, subjects, and content</p>
         </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
@@ -645,7 +632,7 @@ export default function InstituteAdminPortal() {
                 <p className="text-sm text-muted-foreground">Assign teachers to specific classes and subjects</p>
               </div>
               <Button size="sm" className="gap-2" onClick={() => setShowMappingDialog(true)}>
-                <Link2 className="w-4 h-4" /> Assign Teacher
+                <LinkIcon className="w-4 h-4" /> Assign Teacher
               </Button>
             </div>
             <Card className="border-border bg-card">
@@ -653,7 +640,7 @@ export default function InstituteAdminPortal() {
                 {teacherMappings.isLoading && <div className="text-center py-8 text-muted-foreground">Loading...</div>}
                 {(teacherMappings.data ?? []).length === 0 && !teacherMappings.isLoading && (
                   <div className="text-center py-10 text-muted-foreground">
-                    <Link2 className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <LinkIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">No mappings yet. Assign teachers to classes and subjects.</p>
                   </div>
                 )}
@@ -1057,6 +1044,6 @@ export default function InstituteAdminPortal() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </PlatformLayout>
   );
 }

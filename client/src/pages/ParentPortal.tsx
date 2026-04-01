@@ -1,7 +1,7 @@
 import { useState } from "react";
+import PlatformLayout from "@/components/PlatformLayout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Link } from "wouter";
 import {
   Users, BookOpen, BarChart3, Bell, TrendingUp, Calendar,
   CheckCircle2, AlertCircle, MessageSquare, ChevronRight,
@@ -17,6 +17,7 @@ export default function ParentPortal() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
 
+
   const { data: heatmapRaw } = trpc.analytics.getHeatmap.useQuery({});
   const { data: prediction } = trpc.analytics.getPrediction.useQuery({ examId: "jee_main" });
   const { data: lessonPlan } = trpc.lessonPlan.getPlanProgress.useQuery();
@@ -28,26 +29,12 @@ export default function ParentPortal() {
   const totalAttempted = greenChapters + amberChapters + redChapters;
 
   return (
-    <div className="page-enter min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-pink-500/20 flex items-center justify-center">
-              <Heart className="w-5 h-5 text-pink-400" />
-            </div>
-            <div>
-              <h1 className="font-bold text-foreground">Parent Portal</h1>
-              <p className="text-xs text-muted-foreground">Monitor your child's JEE preparation journey</p>
-            </div>
-          </div>
-          <Badge variant="outline" className="text-pink-400 border-pink-400/30 bg-pink-400/10">
-            <Heart className="w-3 h-3 mr-1" /> Parent
-          </Badge>
+    <PlatformLayout activeTab={activeTab} onTabChange={setActiveTab}>
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Parent Dashboard</h1>
+          <p className="text-gray-500 text-sm mt-1">Monitor your child's academic progress and activities</p>
         </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Child Progress Summary */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
@@ -254,6 +241,6 @@ export default function ParentPortal() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </PlatformLayout>
   );
 }

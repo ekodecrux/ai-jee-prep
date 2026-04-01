@@ -981,3 +981,81 @@ export const auditLogs = mysqlTable("audit_logs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+// ─── Online Classes (Teacher-created live sessions) ───────────────────────────
+export const onlineClasses = mysqlTable("online_classes", {
+  id: int("id").autoincrement().primaryKey(),
+  instituteId: int("instituteId").notNull(),
+  classId: int("classId").notNull(),
+  subjectId: int("subjectId"),
+  teacherId: int("teacherId").notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  description: text("description"),
+  meetingUrl: varchar("meetingUrl", { length: 1024 }),
+  scheduledAt: timestamp("scheduledAt").notNull(),
+  durationMinutes: int("durationMinutes").default(60).notNull(),
+  status: mysqlEnum("status", ["scheduled", "live", "ended", "cancelled"]).default("scheduled").notNull(),
+  recordingUrl: varchar("recordingUrl", { length: 1024 }),
+  webcamRequired: boolean("webcamRequired").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type OnlineClass = typeof onlineClasses.$inferSelect;
+
+// ─── Lesson Plans ─────────────────────────────────────────────────────────────
+export const lessonPlans = mysqlTable("lesson_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  instituteId: int("instituteId").notNull(),
+  classId: int("classId").notNull(),
+  subjectId: int("subjectId"),
+  teacherId: int("teacherId").notNull(),
+  chapterId: varchar("chapterId", { length: 64 }),
+  date: varchar("date", { length: 16 }).notNull(),                   // "YYYY-MM-DD"
+  title: varchar("title", { length: 256 }).notNull(),
+  objectives: text("objectives"),
+  activities: text("activities"),
+  resources: text("resources"),
+  homework: text("homework"),
+  estimatedMinutes: int("estimatedMinutes").default(45),
+  status: mysqlEnum("status", ["draft", "published"]).default("draft").notNull(),
+  isAiGenerated: boolean("isAiGenerated").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type LessonPlan = typeof lessonPlans.$inferSelect;
+
+// ─── Bridge Courses (AI-suggested remedial topics) ────────────────────────────
+export const bridgeCourses = mysqlTable("bridge_courses", {
+  id: int("id").autoincrement().primaryKey(),
+  instituteId: int("instituteId").notNull(),
+  studentId: int("studentId").notNull(),
+  teacherId: int("teacherId"),
+  chapterId: varchar("chapterId", { length: 64 }),
+  reason: text("reason"),                                            // Why this bridge is needed
+  aiSuggestion: text("aiSuggestion"),                               // Full AI-generated plan
+  weakTopics: json("weakTopics").$type<string[]>(),                 // Specific weak areas
+  status: mysqlEnum("status", ["pending", "approved", "rejected", "completed"]).default("pending").notNull(),
+  teacherNote: text("teacherNote"),
+  approvedAt: timestamp("approvedAt"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BridgeCourse = typeof bridgeCourses.$inferSelect;
+
+// ─── Low Attendance Alerts ────────────────────────────────────────────────────
+export const lowAttendanceAlerts = mysqlTable("low_attendance_alerts", {
+  id: int("id").autoincrement().primaryKey(),
+  instituteId: int("instituteId").notNull(),
+  studentId: int("studentId").notNull(),
+  classId: int("classId").notNull(),
+  month: varchar("month", { length: 7 }).notNull(),                  // "YYYY-MM"
+  attendancePercent: float("attendancePercent").notNull(),
+  notifiedAdmin: boolean("notifiedAdmin").default(false).notNull(),
+  notifiedParent: boolean("notifiedParent").default(false).notNull(),
+  adminAlertSentAt: timestamp("adminAlertSentAt"),
+  parentAlertSentAt: timestamp("parentAlertSentAt"),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type LowAttendanceAlert = typeof lowAttendanceAlerts.$inferSelect;

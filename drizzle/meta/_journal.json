@@ -43,6 +43,13 @@
       "when": 1774943338087,
       "tag": "0005_bouncy_exodus",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1775012534967,
+      "tag": "0006_military_banshee",
+      "breakpoints": true
     }
   ]
 }

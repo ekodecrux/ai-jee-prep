@@ -8,7 +8,7 @@
  */
 
 import { z } from "zod";
-import { and, eq, desc, sql, inArray } from "drizzle-orm";
+import { and, eq, desc, asc, sql, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { protectedProcedure, router } from "../_core/trpc";
@@ -20,6 +20,7 @@ import {
   instituteSubjects, teacherClassSubjects, attendance,
   instituteAssignments, assignmentSubmissions, auditLogs,
   inviteTokens, instituteSettings,
+  onlineClasses, lessonPlans as lessonPlansTable, bridgeCourses, lowAttendanceAlerts,
 } from "../../drizzle/schema";
 import { sendInviteEmail } from "../email";
 
@@ -1116,5 +1117,294 @@ export const erpRouter = router({
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(auditLogs.createdAt))
         .limit(input.limit);
+    }),
+});
+
+// ─── ONLINE CLASSES ROUTER ────────────────────────────────────────────────────
+export const onlineClassesRouter = router({
+  create: protectedProcedure
+    .input(z.object({
+      instituteId: z.number(),
+      classId: z.number(),
+      subjectId: z.number().optional(),
+      title: z.string().min(1),
+      description: z.string().optional(),
+      scheduledAt: z.number(),
+      durationMinutes: z.number().default(60),
+      meetingUrl: z.string().optional(),
+      webcamRequired: z.boolean().default(false),
+      type: z.enum(["live_class", "test", "doubt_session"]).default("live_class"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.insert(onlineClasses).values({
+        instituteId: input.instituteId,
+        classId: input.classId,
+        subjectId: input.subjectId ?? null,
+        teacherId: ctx.user.id,
+        title: input.title,
+        description: input.description ?? null,
+        scheduledAt: new Date(input.scheduledAt),
+        durationMinutes: input.durationMinutes,
+        meetingUrl: input.meetingUrl ?? null,
+        webcamRequired: input.webcamRequired,
+        status: "scheduled",
+      });
+      return { success: true };
+    }),
+
+  list: protectedProcedure
+    .input(z.object({
+      instituteId: z.number(),
+      classId: z.number().optional(),
+      upcoming: z.boolean().default(true),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const conditions: any[] = [eq(onlineClasses.instituteId, input.instituteId)];
+      if (input.classId) conditions.push(eq(onlineClasses.classId, input.classId));
+      if (input.upcoming) conditions.push(sql`${onlineClasses.scheduledAt} >= ${Date.now() - 3600000}`);
+      return await db.select().from(onlineClasses)
+        .where(and(...conditions))
+        .orderBy(asc(onlineClasses.scheduledAt))
+        .limit(50);
+    }),
+
+  updateStatus: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      status: z.enum(["scheduled", "live", "ended", "cancelled"]),
+      meetingUrl: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(onlineClasses)
+        .set({ status: input.status, ...(input.meetingUrl ? { meetingUrl: input.meetingUrl } : {}) })
+        .where(eq(onlineClasses.id, input.id));
+      return { success: true };
+    }),
+});
+
+// ─── LESSON PLANS ERP ROUTER ─────────────────────────────────────────────────
+export const lessonPlansErpRouter = router({
+  create: protectedProcedure
+    .input(z.object({
+      instituteId: z.number(),
+      classId: z.number(),
+      subjectId: z.number().optional(),
+      title: z.string().min(1),
+      date: z.string(),
+      objectives: z.string().optional(),
+      content: z.string().optional(),
+      resources: z.string().optional(),
+      homework: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.insert(lessonPlansTable).values({
+        instituteId: input.instituteId,
+        classId: input.classId,
+        subjectId: input.subjectId ?? null,
+        teacherId: ctx.user.id,
+        title: input.title,
+        date: input.date,
+        objectives: input.objectives ?? null,
+        activities: input.content ?? null,
+        resources: input.resources ?? null,
+        homework: input.homework ?? null,
+        status: "published",
+        isAiGenerated: false,
+      });
+      return { success: true };
+    }),
+
+  aiGenerate: protectedProcedure
+    .input(z.object({
+      instituteId: z.number(),
+      classId: z.number(),
+      subjectId: z.number().optional(),
+      topic: z.string().min(1),
+      date: z.string(),
+      grade: z.string().optional(),
+      durationMinutes: z.number().default(45),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { invokeLLM } = await import("../_core/llm.js");
+      let aiResult = { title: input.topic, objectives: "", content: "", resources: "", homework: "" };
+      try {
+        const response = await invokeLLM({
+          messages: [
+            { role: "system" as const, content: "You are an expert JEE/competitive exam teacher. Create a detailed lesson plan. Always respond with valid JSON." },
+            { role: "user" as const, content: `Create a lesson plan for: ${input.topic}\nGrade: ${input.grade || "11/12"}\nDuration: ${input.durationMinutes} min\nDate: ${input.date}\nReturn JSON: {title, objectives, content, resources, homework}` },
+          ],
+          response_format: { type: "json_schema", json_schema: {
+            name: "lesson_plan", strict: true,
+            schema: { type: "object", properties: { title: { type: "string" }, objectives: { type: "string" }, content: { type: "string" }, resources: { type: "string" }, homework: { type: "string" } }, required: ["title","objectives","content","resources","homework"], additionalProperties: false },
+          }},
+        });
+        const raw = response?.choices?.[0]?.message?.content;
+        if (raw) aiResult = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+      } catch {
+        aiResult.objectives = `1. Understand core concepts of ${input.topic}\n2. Apply formulas to solve problems\n3. Practice JEE-level questions`;
+        aiResult.content = `Introduction to ${input.topic}\n\nKey Concepts:\n- Concept 1\n- Concept 2\n\nSolved Examples:\nExample 1: ...\n\nPractice Problems:\n1. ...`;
+        aiResult.resources = "NCERT Textbook, HC Verma, Previous Year JEE Papers";
+        aiResult.homework = `Complete 10 practice problems on ${input.topic}.`;
+      }
+      await db.insert(lessonPlansTable).values({
+        instituteId: input.instituteId,
+        classId: input.classId,
+        subjectId: input.subjectId ?? null,
+        teacherId: ctx.user.id,
+        title: aiResult.title,
+        date: input.date,
+        objectives: aiResult.objectives,
+        activities: aiResult.content,
+        resources: aiResult.resources,
+        homework: aiResult.homework,
+        status: "published",
+        isAiGenerated: true,
+      });
+      return { success: true, plan: aiResult };
+    }),
+
+  list: protectedProcedure
+    .input(z.object({
+      instituteId: z.number(),
+      classId: z.number().optional(),
+      fromDate: z.string().optional(),
+      toDate: z.string().optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const conditions: any[] = [eq(lessonPlansTable.instituteId, input.instituteId)];
+      if (input.classId) conditions.push(eq(lessonPlansTable.classId, input.classId));
+      if (input.fromDate) conditions.push(sql`${lessonPlansTable.date} >= ${input.fromDate}`);
+      if (input.toDate) conditions.push(sql`${lessonPlansTable.date} <= ${input.toDate}`);
+      return await db.select().from(lessonPlansTable)
+        .where(and(...conditions))
+        .orderBy(desc(lessonPlansTable.date))
+        .limit(100);
+    }),
+});
+
+// ─── BRIDGE COURSES ROUTER ────────────────────────────────────────────────────
+export const bridgeCoursesRouter = router({
+  suggest: protectedProcedure
+    .input(z.object({
+      studentId: z.number(),
+      studentUserId: z.number(),
+      instituteId: z.number(),
+      weakTopics: z.array(z.string()),
+      subjectName: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { invokeLLM } = await import("../_core/llm.js");
+      let suggestion = { title: `${input.subjectName} Bridge Course`, description: `Targeted remediation for ${input.subjectName}`, topics: input.weakTopics, estimatedHours: 12, priority: "high" };
+      try {
+        const response = await invokeLLM({
+          messages: [
+            { role: "system" as const, content: "You are a JEE expert counselor. Suggest a focused bridge course. Return JSON." },
+            { role: "user" as const, content: `Student is weak in ${input.subjectName}: ${input.weakTopics.join(", ")}. Return JSON: {title, description, topics (array), estimatedHours (number), priority (low/medium/high)}` },
+          ],
+          response_format: { type: "json_schema", json_schema: {
+            name: "bridge_course", strict: true,
+            schema: { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, topics: { type: "array", items: { type: "string" } }, estimatedHours: { type: "number" }, priority: { type: "string" } }, required: ["title","description","topics","estimatedHours","priority"], additionalProperties: false },
+          }},
+        });
+        const raw = response?.choices?.[0]?.message?.content;
+        if (raw) suggestion = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+      } catch { /* use defaults */ }
+      await db.insert(bridgeCourses).values({
+        studentId: input.studentId,
+        teacherId: ctx.user.id,
+        instituteId: input.instituteId,
+        reason: `Weak in ${input.subjectName}: ${input.weakTopics.join(", ")}`,
+        aiSuggestion: `${suggestion.title}\n\n${suggestion.description}\n\nTopics: ${suggestion.topics.join(", ")}\n\nEstimated: ${suggestion.estimatedHours}h`,
+        weakTopics: suggestion.topics,
+        status: "pending",
+      });
+      return { success: true };
+    }),
+
+  approve: protectedProcedure
+    .input(z.object({ id: z.number(), action: z.enum(["approve", "reject"]), teacherNote: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(bridgeCourses)
+        .set({ status: input.action === "approve" ? "approved" : "rejected", teacherNote: input.teacherNote ?? null })
+        .where(eq(bridgeCourses.id, input.id));
+      return { success: true };
+    }),
+
+  list: protectedProcedure
+    .input(z.object({ instituteId: z.number(), studentUserId: z.number().optional(), status: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const conditions: any[] = [eq(bridgeCourses.instituteId, input.instituteId)];
+      if (input.studentUserId) conditions.push(eq(bridgeCourses.studentId, input.studentUserId));
+      if (input.status) conditions.push(sql`${bridgeCourses.status} = ${input.status}`);
+      return await db.select().from(bridgeCourses).where(and(...conditions)).orderBy(desc(bridgeCourses.createdAt)).limit(50);
+    }),
+});
+
+// ─── LOW ATTENDANCE ALERTS ROUTER ─────────────────────────────────────────────
+export const attendanceAlertsRouter = router({
+  checkAndAlert: protectedProcedure
+    .input(z.object({ instituteId: z.number(), month: z.string(), threshold: z.number().default(75) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const instituteClasses = await db.select().from(classes).where(eq(classes.instituteId, input.instituteId));
+      let alertCount = 0;
+      for (const cls of instituteClasses) {
+        const [year, month] = input.month.split("-").map(Number);
+        const startTs = new Date(year, month - 1, 1).getTime();
+        const endTs = new Date(year, month, 0, 23, 59, 59).getTime();
+        const attRecords = await db.select({ studentId: attendance.studentId, status: attendance.status })
+          .from(attendance)
+          .where(and(eq(attendance.classId, cls.id), sql`${attendance.date} >= ${startTs}`, sql`${attendance.date} <= ${endTs}`));
+        const byStudent: Record<number, { present: number; total: number }> = {};
+        for (const rec of attRecords) {
+          if (!byStudent[rec.studentId]) byStudent[rec.studentId] = { present: 0, total: 0 };
+          byStudent[rec.studentId].total++;
+          if (rec.status === "present" || rec.status === "late") byStudent[rec.studentId].present++;
+        }
+        for (const [studentId, counts] of Object.entries(byStudent)) {
+          const pct = counts.total > 0 ? Math.round((counts.present / counts.total) * 100) : 100;
+          if (pct < input.threshold) {
+            const existing = await db.select().from(lowAttendanceAlerts)
+              .where(and(eq(lowAttendanceAlerts.studentId, Number(studentId)), eq(lowAttendanceAlerts.classId, cls.id), eq(lowAttendanceAlerts.month, input.month))).limit(1);
+            if (existing.length === 0) {
+              await db.insert(lowAttendanceAlerts).values({
+                studentId: Number(studentId), classId: cls.id, instituteId: input.instituteId,
+                month: input.month, attendancePercent: pct,
+              });
+              alertCount++;
+            }
+          }
+        }
+      }
+      return { alertsGenerated: alertCount };
+    }),
+
+  list: protectedProcedure
+    .input(z.object({ instituteId: z.number(), month: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const conditions: any[] = [eq(lowAttendanceAlerts.instituteId, input.instituteId)];
+      if (input.month) conditions.push(eq(lowAttendanceAlerts.month, input.month));
+      return await db.select().from(lowAttendanceAlerts).where(and(...conditions)).orderBy(desc(lowAttendanceAlerts.createdAt)).limit(100);
     }),
 });
