@@ -15,7 +15,7 @@ import {
   BookOpen, Target, Trophy, TrendingUp, Zap, Calendar, CheckSquare,
   Video, FileText, FileCheck, Brain, Atom, FlaskConical, Calculator,
   Clock, AlertCircle, ChevronRight, BarChart3, Activity,
-  Loader2, ArrowRight, Star, CheckCircle, Lock
+  Loader2, ArrowRight, Star, CheckCircle, Lock, MessageSquare, ExternalLink, Wand2
 } from "lucide-react";
 
 // ─── Heatmap color helpers ─────────────────────────────────────────────────────
@@ -428,49 +428,144 @@ function AttendanceTab() {
 
 // ─── Daily Activities Tab ──────────────────────────────────────────────────────
 function DailyActivitiesTab() {
-  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const { isAuthenticated } = useAuth();
+  const todayStr = new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const todayDate = new Date().toISOString().slice(0, 10);
 
-  const activities = [
-    { time: "9:00 AM", type: "live-class", title: "Physics — Electromagnetic Induction", teacher: "Dr. Sharma", status: "upcoming", icon: Video, color: "bg-blue-100 text-blue-700" },
-    { time: "11:00 AM", type: "lesson-plan", title: "Chemistry — Electrochemistry (Lesson Plan)", teacher: "Ms. Patel", status: "today", icon: Calendar, color: "bg-green-100 text-green-700" },
-    { time: "2:00 PM", type: "test", title: "Mathematics Weekly Test — Calculus", teacher: "Mr. Kumar", status: "upcoming", icon: FileCheck, color: "bg-purple-100 text-purple-700" },
-    { time: "4:00 PM", type: "assignment", title: "Physics Assignment — Optics Problems", teacher: "Dr. Sharma", status: "due-today", icon: FileText, color: "bg-red-100 text-red-700" },
-  ];
+  // Fetch student's institute membership to get instituteId
+  const { data: myMembership } = trpc.erp.getStudentDashboard.useQuery(undefined, { enabled: isAuthenticated });
+  const instituteId = (myMembership as any)?.membership?.instituteId ?? null;
+  const classId = (myMembership as any)?.enrollments?.[0]?.classId ?? null;
+
+  // Upcoming online classes for today
+  const { data: liveClasses, isLoading: classesLoading } = trpc.onlineClasses.list.useQuery(
+    { instituteId: instituteId!, upcoming: true, classId: classId ?? undefined },
+    { enabled: !!instituteId }
+  );
+
+  // Today's lesson plans
+  const { data: todayPlans, isLoading: plansLoading } = trpc.lessonPlansErp.list.useQuery(
+    { instituteId: instituteId!, classId: classId ?? undefined, fromDate: todayDate, toDate: todayDate },
+    { enabled: !!instituteId }
+  );
+
+  const isLoading = classesLoading || plansLoading;
+
+  // Merge and sort by time
+  type ActivityItem = {
+    time: string;
+    sortKey: number;
+    type: string;
+    title: string;
+    subtitle: string;
+    status: string;
+    icon: any;
+    color: string;
+    link?: string;
+    webcam?: boolean;
+  };
+
+  const activities: ActivityItem[] = [
+    ...(liveClasses ?? []).map((cls: any) => {
+      const dt = new Date(cls.scheduledAt);
+      const typeColors: Record<string, string> = { live_class: "bg-blue-100 text-blue-700", test: "bg-purple-100 text-purple-700", doubt_session: "bg-teal-100 text-teal-700" };
+      const typeIcons: Record<string, any> = { live_class: Video, test: FileCheck, doubt_session: MessageSquare };
+      const typeLabels: Record<string, string> = { live_class: "Live Class", test: "Online Test", doubt_session: "Doubt Session" };
+      const now = Date.now();
+      const diff = cls.scheduledAt - now;
+      const status = diff < 0 ? "live" : diff < 900000 ? "starting-soon" : "upcoming";
+      return {
+        time: dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        sortKey: cls.scheduledAt,
+        type: cls.type,
+        title: cls.title,
+        subtitle: `${cls.durationMinutes} min${cls.webcamRequired ? " · Webcam required" : ""}`,
+        status,
+        icon: typeIcons[cls.type] ?? Video,
+        color: typeColors[cls.type] ?? "bg-blue-100 text-blue-700",
+        link: cls.meetingUrl,
+        webcam: cls.webcamRequired,
+      };
+    }),
+    ...(todayPlans ?? []).map((lp: any) => ({
+      time: "All Day",
+      sortKey: new Date(lp.date).getTime(),
+      type: "lesson-plan",
+      title: lp.title,
+      subtitle: lp.homework ? `HW: ${lp.homework}` : "Read lesson plan",
+      status: "today",
+      icon: Calendar,
+      color: "bg-green-100 text-green-700",
+    })),
+  ].sort((a, b) => a.sortKey - b.sortKey);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <Zap className="w-5 h-5 text-indigo-600" />
-        <h2 className="font-semibold text-gray-900">{today}</h2>
+        <h2 className="font-semibold text-gray-900">{todayStr}</h2>
       </div>
-      <div className="space-y-3">
-        {activities.map((act, i) => {
-          const Icon = act.icon;
-          return (
-            <Card key={i} className="border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-4">
-                  <div className="text-right flex-shrink-0 w-16">
-                    <span className="text-xs font-medium text-gray-500">{act.time}</span>
+
+      {isLoading && (
+        <div className="space-y-3">
+          {[1,2,3].map(i => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
+        </div>
+      )}
+
+      {!isLoading && !instituteId && (
+        <div className="text-center py-16 text-gray-400">
+          <Zap className="w-12 h-12 mx-auto mb-3 opacity-20" />
+          <p className="font-semibold text-gray-600">No institute linked</p>
+          <p className="text-sm mt-1">Your teacher or institute admin will add you to a class. Activities will appear here once enrolled.</p>
+        </div>
+      )}
+
+      {!isLoading && instituteId && activities.length === 0 && (
+        <div className="text-center py-16 text-gray-400">
+          <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-20" />
+          <p className="font-semibold text-gray-600">All clear for today!</p>
+          <p className="text-sm mt-1">No classes or lesson plans scheduled for today. Check back tomorrow.</p>
+        </div>
+      )}
+
+      {!isLoading && activities.length > 0 && (
+        <div className="space-y-3">
+          {activities.map((act, i) => {
+            const Icon = act.icon;
+            return (
+              <Card key={i} className="border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="text-right flex-shrink-0 w-16">
+                      <span className="text-xs font-medium text-gray-500">{act.time}</span>
+                    </div>
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${act.color}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 text-sm">{act.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{act.subtitle}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {act.status === "live" && <Badge className="bg-red-500 text-white border-0 text-xs animate-pulse">LIVE</Badge>}
+                      {act.status === "starting-soon" && <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">Starting Soon</Badge>}
+                      {act.status === "upcoming" && <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">Upcoming</Badge>}
+                      {act.status === "today" && <Badge className="bg-green-100 text-green-700 border-0 text-xs">Today</Badge>}
+                      {act.link && (
+                        <a href={act.link} target="_blank" rel="noopener noreferrer">
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1">
+                            <ArrowRight className="w-3 h-3" /> Join
+                          </Button>
+                        </a>
+                      )}
+                    </div>
                   </div>
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${act.color}`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm">{act.title}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{act.teacher}</p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    {act.status === "upcoming" && <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">Upcoming</Badge>}
-                    {act.status === "today" && <Badge className="bg-green-100 text-green-700 border-0 text-xs">Today</Badge>}
-                    {act.status === "due-today" && <Badge className="bg-red-100 text-red-700 border-0 text-xs">Due Today</Badge>}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -482,6 +577,166 @@ function PlaceholderTab({ icon: Icon, title, description }: { icon: any; title: 
       <Icon className="w-14 h-14 mx-auto mb-4 opacity-20" />
       <p className="font-semibold text-gray-600 text-lg">{title}</p>
       <p className="text-sm mt-2 max-w-sm mx-auto">{description}</p>
+    </div>
+  );
+}
+
+// ─── Live Classes Tab (Student) ───────────────────────────────────────────────
+function LiveClassesTab() {
+  const { isAuthenticated } = useAuth();
+  const { data: myDash } = trpc.erp.getStudentDashboard.useQuery(undefined, { enabled: isAuthenticated });
+  const instituteId = (myDash as any)?.membership?.instituteId ?? null;
+  const classId = (myDash as any)?.enrollments?.[0]?.classId ?? null;
+
+  const { data: classes, isLoading } = trpc.onlineClasses.list.useQuery(
+    { instituteId: instituteId!, upcoming: true, classId: classId ?? undefined },
+    { enabled: !!instituteId }
+  );
+
+  if (!instituteId) return (
+    <div className="text-center py-20 text-gray-400">
+      <Video className="w-14 h-14 mx-auto mb-4 opacity-20" />
+      <p className="font-semibold text-gray-600 text-lg">No institute linked</p>
+      <p className="text-sm mt-2">You'll see live classes here once your institute admin enrolls you in a class.</p>
+    </div>
+  );
+
+  if (isLoading) return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />)}</div>;
+
+  if (!classes || classes.length === 0) return (
+    <div className="text-center py-20 text-gray-400">
+      <Video className="w-14 h-14 mx-auto mb-4 opacity-20" />
+      <p className="font-semibold text-gray-600 text-lg">No upcoming classes</p>
+      <p className="text-sm mt-2">Your teacher hasn't scheduled any classes yet. Check back soon.</p>
+    </div>
+  );
+
+  const typeColors: Record<string, string> = { live_class: "bg-blue-100 text-blue-700", test: "bg-purple-100 text-purple-700", doubt_session: "bg-teal-100 text-teal-700" };
+  const typeLabels: Record<string, string> = { live_class: "Live Class", test: "Online Test", doubt_session: "Doubt Session" };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Upcoming Classes</h2>
+        <p className="text-sm text-gray-500 mt-1">Join your scheduled live sessions, tests, and doubt sessions</p>
+      </div>
+      <div className="space-y-3">
+        {classes.map((cls: any) => {
+          const dt = new Date(cls.scheduledAt);
+          const now = Date.now();
+          const diff = cls.scheduledAt - now;
+          const isLive = diff < 0 && diff > -cls.durationMinutes * 60000;
+          const isSoon = diff > 0 && diff < 900000;
+          return (
+            <Card key={cls.id} className="border-gray-200 shadow-sm">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeColors[cls.type] ?? "bg-gray-100 text-gray-700"}`}>{typeLabels[cls.type] ?? cls.type}</span>
+                      {cls.webcamRequired && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Webcam Required</span>}
+                      {isLive && <Badge className="bg-red-500 text-white border-0 text-xs animate-pulse">LIVE NOW</Badge>}
+                      {isSoon && <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">Starting Soon</Badge>}
+                    </div>
+                    <p className="font-semibold text-gray-900">{cls.title}</p>
+                    {cls.description && <p className="text-sm text-gray-500 mt-1">{cls.description}</p>}
+                    <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {dt.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })} at {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {cls.durationMinutes} min
+                    </p>
+                  </div>
+                  {cls.meetingUrl && (
+                    <a href={cls.meetingUrl} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm" className={`gap-1 shrink-0 ${isLive ? "bg-red-600 hover:bg-red-700" : ""}`}>
+                        <ExternalLink className="w-3 h-3" /> {isLive ? "Join Now" : "Join"}
+                      </Button>
+                    </a>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Lesson Plans Tab (Student read-only) ──────────────────────────────────────
+function LessonPlansStudentTab() {
+  const { isAuthenticated } = useAuth();
+  const { data: myDash } = trpc.erp.getStudentDashboard.useQuery(undefined, { enabled: isAuthenticated });
+  const instituteId = (myDash as any)?.membership?.instituteId ?? null;
+  const classId = (myDash as any)?.enrollments?.[0]?.classId ?? null;
+
+  const { data: plans, isLoading } = trpc.lessonPlansErp.list.useQuery(
+    { instituteId: instituteId! },
+    { enabled: !!instituteId }
+  );
+
+  if (!instituteId) return (
+    <div className="text-center py-20 text-gray-400">
+      <Calendar className="w-14 h-14 mx-auto mb-4 opacity-20" />
+      <p className="font-semibold text-gray-600 text-lg">No institute linked</p>
+      <p className="text-sm mt-2">Lesson plans from your teacher will appear here once you're enrolled.</p>
+    </div>
+  );
+
+  if (isLoading) return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />)}</div>;
+
+  if (!plans || plans.length === 0) return (
+    <div className="text-center py-20 text-gray-400">
+      <Calendar className="w-14 h-14 mx-auto mb-4 opacity-20" />
+      <p className="font-semibold text-gray-600 text-lg">No lesson plans yet</p>
+      <p className="text-sm mt-2">Your teacher's lesson plans will appear here once published.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Lesson Plans</h2>
+        <p className="text-sm text-gray-500 mt-1">Daily lesson plans from your teacher — read-only view</p>
+      </div>
+      <div className="space-y-3">
+        {plans.map((lp: any) => (
+          <Card key={lp.id} className="border-gray-200 shadow-sm">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{lp.date}</span>
+                    {lp.isAiGenerated && <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium flex items-center gap-1"><Wand2 className="w-3 h-3" /> AI Generated</span>}
+                    <Badge variant="secondary" className="text-xs">{lp.status}</Badge>
+                  </div>
+                  <p className="font-semibold text-gray-900">{lp.title}</p>
+                  {lp.objectives && (
+                    <div className="mt-2">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Objectives</p>
+                      <p className="text-sm text-gray-700 mt-0.5">{lp.objectives}</p>
+                    </div>
+                  )}
+                  {lp.content && (
+                    <div className="mt-2">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Lesson Content</p>
+                      <p className="text-sm text-gray-700 mt-0.5 line-clamp-3">{lp.content}</p>
+                    </div>
+                  )}
+                  {lp.homework && (
+                    <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Homework</p>
+                      <p className="text-sm text-amber-800 mt-0.5">{lp.homework}</p>
+                    </div>
+                  )}
+                  {lp.resources && (
+                    <p className="text-xs text-gray-400 mt-2">Resources: {lp.resources}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
@@ -538,8 +793,8 @@ export default function DashboardPage() {
         {activeTab === "activities" && <DailyActivitiesTab />}
         {activeTab === "heatmap" && <PerformanceHeatmapTab />}
         {activeTab === "attendance" && <AttendanceTab />}
-        {activeTab === "live-classes" && <PlaceholderTab icon={Video} title="Live Classes" description="Your teacher will schedule live classes here. You'll receive a notification when a class is about to start." />}
-        {activeTab === "lesson-plans" && <PlaceholderTab icon={Calendar} title="Lesson Plans" description="Your teacher's daily lesson plans will appear here once published. Plans are read-only for students." />}
+        {activeTab === "live-classes" && <LiveClassesTab />}
+        {activeTab === "lesson-plans" && <LessonPlansStudentTab />}
         {activeTab === "assessments" && <PlaceholderTab icon={FileCheck} title="Assessments" description="Chapter assessments and tests assigned by your teacher will appear here." />}
         {activeTab === "assignments" && <PlaceholderTab icon={FileText} title="Assignments" description="Assignments from your teachers will appear here with due dates and submission status." />}
         {activeTab === "bridge" && <PlaceholderTab icon={Brain} title="Bridge Courses" description="AI-powered bridge course suggestions approved by your teacher will appear here to help fill knowledge gaps." />}

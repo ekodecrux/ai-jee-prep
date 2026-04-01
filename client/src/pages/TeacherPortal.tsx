@@ -1,4 +1,9 @@
 import { useState, useMemo } from "react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import PlatformLayout from "@/components/PlatformLayout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -8,6 +13,7 @@ import {
   GraduationCap, CheckCircle2, AlertCircle, TrendingUp,
   MessageSquare, Video, Plus, Calendar, ChevronDown,
   CheckSquare, XSquare, Clock, Save, RefreshCw,
+  Wand2, FileText, ExternalLink, Wifi, WifiOff,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,6 +96,101 @@ export default function TeacherPortal() {
       setAttSaved(false);
     }
   }, [existingAtt, classStudents]);
+
+  // ─── Online Classes state ──────────────────────────────────────────────────
+  const [showCreateClass, setShowCreateClass] = useState(false);
+  const [ocTitle, setOcTitle] = useState("");
+  const [ocDesc, setOcDesc] = useState("");
+  const [ocClassId, setOcClassId] = useState<number | null>(null);
+  const [ocSubjectId, setOcSubjectId] = useState<number | null>(null);
+  const [ocDate, setOcDate] = useState("");
+  const [ocTime, setOcTime] = useState("09:00");
+  const [ocDuration, setOcDuration] = useState(60);
+  const [ocMeetingUrl, setOcMeetingUrl] = useState("");
+  const [ocWebcam, setOcWebcam] = useState(false);
+  const [ocType, setOcType] = useState<"live_class" | "test" | "doubt_session">("live_class");
+
+  // ─── Lesson Plan state ────────────────────────────────────────────────────
+  const [showCreateLP, setShowCreateLP] = useState(false);
+  const [lpTitle, setLpTitle] = useState("");
+  const [lpDate, setLpDate] = useState(new Date().toISOString().slice(0, 10));
+  const [lpObjectives, setLpObjectives] = useState("");
+  const [lpContent, setLpContent] = useState("");
+  const [lpResources, setLpResources] = useState("");
+  const [lpHomework, setLpHomework] = useState("");
+  const [lpClassId, setLpClassId] = useState<number | null>(null);
+  const [lpAiTopic, setLpAiTopic] = useState("");
+  const [lpAiLoading, setLpAiLoading] = useState(false);
+
+  // ─── Online Classes queries/mutations ────────────────────────────────────
+  const { data: upcomingClasses, refetch: refetchClasses } = trpc.onlineClasses.list.useQuery(
+    { instituteId: myInstituteId!, upcoming: true },
+    { enabled: !!myInstituteId }
+  );
+  const createClass = trpc.onlineClasses.create.useMutation({
+    onSuccess: () => { toast.success("Class scheduled!"); setShowCreateClass(false); refetchClasses(); resetOcForm(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  // ─── Lesson Plan queries/mutations ───────────────────────────────────────
+  const { data: lessonPlans, refetch: refetchLP } = trpc.lessonPlansErp.list.useQuery(
+    { instituteId: myInstituteId! },
+    { enabled: !!myInstituteId }
+  );
+  const createLP = trpc.lessonPlansErp.create.useMutation({
+    onSuccess: () => { toast.success("Lesson plan saved!"); setShowCreateLP(false); refetchLP(); resetLpForm(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const aiGenerateLP = trpc.lessonPlansErp.aiGenerate.useMutation({
+    onSuccess: (res) => {
+      if (res.plan) {
+        setLpTitle(res.plan.title);
+        setLpObjectives(res.plan.objectives);
+        setLpContent(res.plan.content);
+        setLpResources(res.plan.resources);
+        setLpHomework(res.plan.homework);
+      }
+      toast.success("AI lesson plan generated!");
+      setLpAiLoading(false);
+      refetchLP();
+    },
+    onError: (e) => { toast.error(e.message); setLpAiLoading(false); },
+  });
+
+  function resetOcForm() {
+    setOcTitle(""); setOcDesc(""); setOcClassId(null); setOcSubjectId(null);
+    setOcDate(""); setOcTime("09:00"); setOcDuration(60); setOcMeetingUrl(""); setOcWebcam(false);
+  }
+  function resetLpForm() {
+    setLpTitle(""); setLpObjectives(""); setLpContent(""); setLpResources(""); setLpHomework(""); setLpAiTopic("");
+  }
+
+  function submitCreateClass() {
+    if (!myInstituteId || !ocClassId || !ocTitle || !ocDate) { toast.error("Fill all required fields"); return; }
+    const scheduledAt = new Date(`${ocDate}T${ocTime}:00`).getTime();
+    createClass.mutate({
+      instituteId: myInstituteId, classId: ocClassId, subjectId: ocSubjectId ?? undefined,
+      title: ocTitle, description: ocDesc, scheduledAt, durationMinutes: ocDuration,
+      meetingUrl: ocMeetingUrl || undefined, webcamRequired: ocWebcam, type: ocType,
+    });
+  }
+
+  function submitCreateLP() {
+    if (!myInstituteId || !lpClassId || !lpTitle) { toast.error("Fill all required fields"); return; }
+    createLP.mutate({
+      instituteId: myInstituteId, classId: lpClassId, title: lpTitle, date: lpDate,
+      objectives: lpObjectives, content: lpContent, resources: lpResources, homework: lpHomework,
+    });
+  }
+
+  function runAiGenerate() {
+    if (!myInstituteId || !lpClassId || !lpAiTopic) { toast.error("Select a class and enter a topic"); return; }
+    setLpAiLoading(true);
+    aiGenerateLP.mutate({
+      instituteId: myInstituteId, classId: lpClassId, topic: lpAiTopic, date: lpDate,
+      durationMinutes: 45,
+    });
+  }
 
   // ─── Mark attendance mutation ─────────────────────────────────────────────
   const markAtt = trpc.erp.markAttendance.useMutation({
@@ -174,12 +275,251 @@ export default function TeacherPortal() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-muted mb-6 flex-wrap h-auto gap-1">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="schedule">Schedule</TabsTrigger>
+            <TabsTrigger value="lesson-plans">Lesson Plans</TabsTrigger>
             <TabsTrigger value="attendance">Attendance</TabsTrigger>
             <TabsTrigger value="students">My Students</TabsTrigger>
             <TabsTrigger value="proctoring">Proctoring</TabsTrigger>
             <TabsTrigger value="doubts">Doubt Board</TabsTrigger>
             <TabsTrigger value="assessments">Assessments</TabsTrigger>
           </TabsList>
+
+          {/* ─── Schedule ─────────────────────────────────────────────────── */}
+          <TabsContent value="schedule" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Online Classes & Sessions</h2>
+                <p className="text-sm text-muted-foreground">Schedule live classes, tests, and doubt sessions</p>
+              </div>
+              <Dialog open={showCreateClass} onOpenChange={setShowCreateClass}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gap-2"><Plus className="w-4 h-4" /> Schedule Class</Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader><DialogTitle>Schedule Online Session</DialogTitle></DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <Label>Session Title *</Label>
+                        <Input placeholder="e.g. Kinematics — Live Doubt Session" value={ocTitle} onChange={e => setOcTitle(e.target.value)} className="mt-1" />
+                      </div>
+                      <div>
+                        <Label>Type</Label>
+                        <Select value={ocType} onValueChange={v => setOcType(v as any)}>
+                          <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="live_class">Live Class</SelectItem>
+                            <SelectItem value="test">Online Test</SelectItem>
+                            <SelectItem value="doubt_session">Doubt Session</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Class *</Label>
+                        <Select value={ocClassId?.toString() ?? ""} onValueChange={v => setOcClassId(Number(v))}>
+                          <SelectTrigger className="mt-1"><SelectValue placeholder="Select class" /></SelectTrigger>
+                          <SelectContent>
+                            {myClasses?.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}{(c as any).section ? ` - ${(c as any).section}` : ""}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Date *</Label>
+                        <Input type="date" value={ocDate} onChange={e => setOcDate(e.target.value)} className="mt-1" />
+                      </div>
+                      <div>
+                        <Label>Time</Label>
+                        <Input type="time" value={ocTime} onChange={e => setOcTime(e.target.value)} className="mt-1" />
+                      </div>
+                      <div>
+                        <Label>Duration (min)</Label>
+                        <Input type="number" value={ocDuration} onChange={e => setOcDuration(Number(e.target.value))} className="mt-1" min={15} max={180} />
+                      </div>
+                      <div className="col-span-2">
+                        <Label>Meeting URL (Google Meet / Zoom)</Label>
+                        <Input placeholder="https://meet.google.com/..." value={ocMeetingUrl} onChange={e => setOcMeetingUrl(e.target.value)} className="mt-1" />
+                      </div>
+                      <div>
+                        <Label>Description</Label>
+                        <Textarea placeholder="What will be covered..." value={ocDesc} onChange={e => setOcDesc(e.target.value)} className="mt-1" rows={2} />
+                      </div>
+                      <div className="flex items-center gap-3 pt-4">
+                        <Switch checked={ocWebcam} onCheckedChange={setOcWebcam} id="webcam-toggle" />
+                        <Label htmlFor="webcam-toggle" className="cursor-pointer">
+                          {ocWebcam ? <span className="flex items-center gap-1 text-amber-600"><Wifi className="w-4 h-4" /> Webcam Required</span> : <span className="flex items-center gap-1 text-muted-foreground"><WifiOff className="w-4 h-4" /> Webcam Optional</span>}
+                        </Label>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button className="flex-1" onClick={submitCreateClass} disabled={createClass.isPending}>
+                        {createClass.isPending ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null} Schedule Session
+                      </Button>
+                      <Button variant="outline" onClick={() => setShowCreateClass(false)}>Cancel</Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Upcoming classes list */}
+            {!upcomingClasses || upcomingClasses.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <Video className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p className="font-medium">No upcoming sessions</p>
+                <p className="text-sm mt-1">Click "Schedule Class" to create your first online session</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {upcomingClasses.map((cls: any) => {
+                  const dt = new Date(cls.scheduledAt);
+                  const typeColors: Record<string, string> = { live_class: "bg-blue-100 text-blue-700", test: "bg-red-100 text-red-700", doubt_session: "bg-purple-100 text-purple-700" };
+                  const typeLabels: Record<string, string> = { live_class: "Live Class", test: "Online Test", doubt_session: "Doubt Session" };
+                  return (
+                    <Card key={cls.id} className="border-border bg-card">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeColors[cls.type] ?? "bg-gray-100 text-gray-700"}`}>{typeLabels[cls.type] ?? cls.type}</span>
+                              {cls.webcamRequired && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium flex items-center gap-1"><Wifi className="w-3 h-3" /> Webcam</span>}
+                              <Badge variant={cls.status === "live" ? "default" : "secondary"} className="text-xs">{cls.status}</Badge>
+                            </div>
+                            <p className="font-semibold text-foreground truncate">{cls.title}</p>
+                            {cls.description && <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">{cls.description}</p>}
+                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {dt.toLocaleDateString()} at {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {cls.durationMinutes} min
+                            </p>
+                          </div>
+                          {cls.meetingUrl && (
+                            <a href={cls.meetingUrl} target="_blank" rel="noopener noreferrer">
+                              <Button size="sm" variant="outline" className="gap-1 shrink-0">
+                                <ExternalLink className="w-3 h-3" /> Join
+                              </Button>
+                            </a>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ─── Lesson Plans ─────────────────────────────────────────────── */}
+          <TabsContent value="lesson-plans" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Lesson Plans</h2>
+                <p className="text-sm text-muted-foreground">Create manually or let AI generate a full plan in seconds</p>
+              </div>
+              <Dialog open={showCreateLP} onOpenChange={setShowCreateLP}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gap-2"><Plus className="w-4 h-4" /> New Plan</Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader><DialogTitle>Create Lesson Plan</DialogTitle></DialogHeader>
+                  <div className="space-y-4 py-2">
+                    {/* AI Generate strip */}
+                    <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                      <p className="text-sm font-semibold text-indigo-800 mb-2 flex items-center gap-2"><Wand2 className="w-4 h-4" /> AI Auto-Generate</p>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Enter topic, e.g. Newton's Laws of Motion"
+                          value={lpAiTopic}
+                          onChange={e => setLpAiTopic(e.target.value)}
+                          className="flex-1 bg-white"
+                        />
+                        <Button
+                          variant="default"
+                          className="gap-1 shrink-0 bg-indigo-600 hover:bg-indigo-700"
+                          onClick={runAiGenerate}
+                          disabled={lpAiLoading || !lpAiTopic || !lpClassId}
+                        >
+                          {lpAiLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                          {lpAiLoading ? "Generating..." : "Generate"}
+                        </Button>
+                      </div>
+                      {!lpClassId && <p className="text-xs text-indigo-600 mt-1">Select a class below first</p>}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <Label>Title *</Label>
+                        <Input placeholder="Lesson title" value={lpTitle} onChange={e => setLpTitle(e.target.value)} className="mt-1" />
+                      </div>
+                      <div>
+                        <Label>Class *</Label>
+                        <Select value={lpClassId?.toString() ?? ""} onValueChange={v => setLpClassId(Number(v))}>
+                          <SelectTrigger className="mt-1"><SelectValue placeholder="Select class" /></SelectTrigger>
+                          <SelectContent>
+                            {myClasses?.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}{(c as any).section ? ` - ${(c as any).section}` : ""}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Date</Label>
+                        <Input type="date" value={lpDate} onChange={e => setLpDate(e.target.value)} className="mt-1" />
+                      </div>
+                      <div className="col-span-2">
+                        <Label>Learning Objectives</Label>
+                        <Textarea placeholder="By end of lesson, students will be able to..." value={lpObjectives} onChange={e => setLpObjectives(e.target.value)} className="mt-1" rows={3} />
+                      </div>
+                      <div className="col-span-2">
+                        <Label>Lesson Content / Activities</Label>
+                        <Textarea placeholder="Introduction, key concepts, activities, examples..." value={lpContent} onChange={e => setLpContent(e.target.value)} className="mt-1" rows={4} />
+                      </div>
+                      <div>
+                        <Label>Resources</Label>
+                        <Textarea placeholder="NCERT, HC Verma, YouTube links..." value={lpResources} onChange={e => setLpResources(e.target.value)} className="mt-1" rows={2} />
+                      </div>
+                      <div>
+                        <Label>Homework</Label>
+                        <Textarea placeholder="Practice problems, reading..." value={lpHomework} onChange={e => setLpHomework(e.target.value)} className="mt-1" rows={2} />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button className="flex-1" onClick={submitCreateLP} disabled={createLP.isPending}>
+                        {createLP.isPending ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />} Save Lesson Plan
+                      </Button>
+                      <Button variant="outline" onClick={() => setShowCreateLP(false)}>Cancel</Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Lesson plans list */}
+            {!lessonPlans || lessonPlans.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p className="font-medium">No lesson plans yet</p>
+                <p className="text-sm mt-1">Create your first lesson plan manually or use AI to generate one instantly</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {lessonPlans.map((lp: any) => (
+                  <Card key={lp.id} className="border-border bg-card">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{lp.date}</span>
+                            {lp.isAiGenerated && <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium flex items-center gap-1"><Wand2 className="w-3 h-3" /> AI</span>}
+                            <Badge variant="secondary" className="text-xs">{lp.status}</Badge>
+                          </div>
+                          <p className="font-semibold text-foreground">{lp.title}</p>
+                          {lp.objectives && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{lp.objectives}</p>}
+                          {lp.homework && <p className="text-xs text-amber-600 mt-1 flex items-center gap-1"><BookOpen className="w-3 h-3" /> HW: {lp.homework}</p>}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
           {/* ─── Overview ─────────────────────────────────────────────────── */}
           <TabsContent value="overview" className="space-y-6">

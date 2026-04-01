@@ -622,3 +622,13 @@
 - [ ] In-app notification to Institute Admin for flagged students
 - [ ] Email alert to linked parent(s) of flagged student
 - [ ] Alert history log in Institute Admin portal
+
+## Phase 18: Teacher & Student Portal Wiring
+
+- [x] Teacher portal: Create Class dialog wired to onlineClasses.create (meeting URL, webcam toggle, class/subject selectors, date/time picker)
+- [x] Teacher portal: List upcoming online classes in Schedule tab from onlineClasses.list
+- [x] Teacher portal: Lesson Plans tab with manual entry form
+- [x] Teacher portal: AI auto-generate lesson plan button (topic input → AI generates full plan)
+- [x] Student dashboard: Today tab shows upcoming online classes with join links
+- [x] Student dashboard: Today tab shows today's lesson plan (objectives, homework)
+- [x] Student dashboard: Daily activities feed sorted by scheduled time
