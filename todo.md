@@ -672,3 +672,36 @@
 - [x] Assessment engine: Proctoring summary shown in result page (violations count + event log)
 - [x] Assessment engine: Intro page shows webcam proctoring notice for chapter tests
 - [x] Assessment engine: Minimizable PiP camera widget with green/red face-status indicator
+
+## Phase 21: Landing Page Fix, Login Screen, Report Card, Assignments, Fees
+
+- [ ] Fix landing page — ExamForge AI white-theme not rendering for unauthenticated users
+- [ ] Fix login screen — unauthenticated users must see login page with OAuth button
+- [x] PDF report card — downloadable per-student report (attendance, grades, scores, remarks)
+- [x] Assignment creation and grading (Teacher creates, Student submits, Teacher grades)
+- [x] Fee management module (payment status, reminders, monthly collection reports)
+
+## Phase 22: Role-Based Navigation Separation
+
+- [x] Audit PlatformLayout — understand why all roles see all tabs
+- [x] PlatformLayout: show only role-specific nav tabs (student sees student tabs, teacher sees teacher tabs, etc.)
+- [x] App.tsx: auto-redirect authenticated users to their correct portal based on ERP role
+- [x] Student portal: only student tabs (Dashboard, Subjects, Study Plan, Assignments, Report Card, etc.)
+- [x] Teacher portal: only teacher tabs (Classes, Lesson Plans, Live Classes, Assignments, Grading, etc.)
+- [x] Parent portal: only parent tabs (Overview, Heatmap, Lesson Plans, Report Card, etc.)
+- [x] Institute Admin portal: only admin tabs (Overview, Users, Classes, Fees, Attendance, Alerts, etc.)
+- [x] Super Admin portal: separate page, no shared nav with other roles
+- [x] Verify no cross-role tab leakage
+
+## Phase 23: Complete Multi-Tenant Role Management System
+
+- [x] Marketing landing page: hero, role cards (5 roles), features, how-it-works, CTA
+- [x] Role-aware login: after OAuth, detect role and redirect to correct portal
+- [x] Student portal: self-contained with own nav (Dashboard, Subjects, Study Plan, Assignments, Report Card, Performance)
+- [x] Teacher portal: self-contained with own nav (Classes, Lesson Plans, Assignments, Grading, Students, Live Classes)
+- [x] Parent portal: self-contained with own nav (Child Overview, Attendance, Report Card, Assignments, Progress)
+- [x] Institute Admin portal: self-contained with own nav (Dashboard, Users, Classes, Fees, Attendance, Alerts, Settings)
+- [x] Super Admin portal: self-contained with own nav (Institutes, Onboarding, Analytics, System Health)
+- [x] No cross-role tab leakage — each portal only shows its own tabs
+- [x] Role guard on all portal routes — wrong role gets redirected to own portal
+- [x] Onboarding flow: new user without role gets directed to onboarding wizard

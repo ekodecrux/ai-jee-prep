@@ -12,6 +12,9 @@ import { analyticsRouter } from "./routers/analytics";
 import { lessonPlanRouter } from "./routers/lessonPlan";
 import { notificationsRouter } from "./routers/notifications";
 import { erpRouter, onlineClassesRouter, lessonPlansErpRouter, bridgeCoursesRouter, attendanceAlertsRouter, attendanceAlertsAdminRouter, bridgeCourseApprovalRouter } from "./routers/erp";
+import { reportCardRouter } from "./routers/reportCard";
+import { assignmentsRouter } from "./routers/assignments";
+import { feesRouter } from "./routers/fees";
 
 export const appRouter = router({
   system: systemRouter,
@@ -39,6 +42,9 @@ export const appRouter = router({
   attendanceAlerts: attendanceAlertsRouter,
   attendanceAlertsAdmin: attendanceAlertsAdminRouter,
   bridgeCourseApproval: bridgeCourseApprovalRouter,
+  reportCard: reportCardRouter,
+  assignments: assignmentsRouter,
+  fees: feesRouter,
 });
 
 export type AppRouter = typeof appRouter;

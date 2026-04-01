@@ -4,6 +4,13 @@
  * Tabs: Overview | Today's Activities | Chapter Heatmap | Attendance | Live Classes | Lesson Plans | Assessments | Assignments | Bridge Courses
  */
 import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import ReportCard from "@/components/ReportCard";
 import { Link, useLocation } from "wouter";
 import PlatformLayout from "@/components/PlatformLayout";
 import { trpc } from "@/lib/trpc";
@@ -15,7 +22,7 @@ import {
   BookOpen, Target, Trophy, TrendingUp, Zap, Calendar, CheckSquare,
   Video, FileText, FileCheck, Brain, Atom, FlaskConical, Calculator,
   Clock, AlertCircle, ChevronRight, BarChart3, Activity,
-  Loader2, ArrowRight, Star, CheckCircle, Lock, MessageSquare, ExternalLink, Wand2
+  Loader2, ArrowRight, Star, CheckCircle, Lock, MessageSquare, ExternalLink, Wand2, GraduationCap
 } from "lucide-react";
 
 // ─── Heatmap color helpers ─────────────────────────────────────────────────────
@@ -852,6 +859,7 @@ export default function DashboardPage() {
     { id: "assessments", label: "Assessments", icon: FileCheck },
     { id: "assignments", label: "Assignments", icon: FileText },
     { id: "bridge", label: "Bridge Courses", icon: Brain },
+    { id: "report-card", label: "Report Card", icon: GraduationCap },
   ];
 
   return (
@@ -891,9 +899,168 @@ export default function DashboardPage() {
         {activeTab === "live-classes" && <LiveClassesTab />}
         {activeTab === "lesson-plans" && <LessonPlansStudentTab />}
         {activeTab === "assessments" && <PlaceholderTab icon={FileCheck} title="Assessments" description="Chapter assessments and tests assigned by your teacher will appear here." />}
-        {activeTab === "assignments" && <PlaceholderTab icon={FileText} title="Assignments" description="Assignments from your teachers will appear here with due dates and submission status." />}
+        {activeTab === "assignments" && <StudentAssignmentsTab />}
         {activeTab === "bridge" && <BridgeCoursesStudentTab />}
+        {activeTab === "report-card" && <ReportCardTab />}
       </div>
     </PlatformLayout>
   );
+}
+
+// ─── Student Assignments Tab ──────────────────────────────────────────────────
+function StudentAssignmentsTab() {
+  const [submitOpen, setSubmitOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<{
+    id: number; title: string; maxMarks: number | null; dueDate: string | null; description: string | null;
+  } | null>(null);
+  const [submitForm, setSubmitForm] = useState({ textContent: "", fileUrl: "" });
+
+  const { data: assignments, isLoading, refetch } = trpc.assignments.listForStudent.useQuery();
+
+  const submitMut = trpc.assignments.submit.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.updated ? "Submission updated!" : "Assignment submitted!");
+      setSubmitOpen(false);
+      setSubmitForm({ textContent: "", fileUrl: "" });
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  if (isLoading) return (
+    <div className="space-y-3">
+      {[1, 2, 3].map(i => <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />)}
+    </div>
+  );
+
+  const now = new Date();
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold">Assignments</h2>
+        <p className="text-sm text-muted-foreground">Homework and assignments from your teachers</p>
+      </div>
+
+      {!assignments || assignments.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground border rounded-xl">
+          <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
+          <p className="font-medium">No assignments yet</p>
+          <p className="text-sm mt-1">Your teachers haven't posted any assignments. Check back later.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {assignments.map(a => {
+            const isOverdue = a.dueDate && new Date(a.dueDate) < now;
+            const submitted = !!a.mySubmission;
+            const graded = a.mySubmission?.grade !== null && a.mySubmission?.grade !== undefined;
+
+            return (
+              <Card key={a.id} className="flex flex-col">
+                <CardContent className="p-5 flex flex-col flex-1">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm leading-tight">{a.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{a.className} · {a.subjectName}</p>
+                    </div>
+                    <Badge
+                      variant={graded ? "default" : submitted ? "secondary" : isOverdue ? "destructive" : "outline"}
+                      className="text-xs shrink-0"
+                    >
+                      {graded ? "Graded" : submitted ? "Submitted" : isOverdue ? "Overdue" : "Pending"}
+                    </Badge>
+                  </div>
+
+                  {a.description && (
+                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{a.description}</p>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+                    <span className={isOverdue && !submitted ? "text-red-500 font-medium" : ""}>
+                      Due: {a.dueDate ?? "—"}
+                    </span>
+                    <span>Max: {a.maxMarks} marks</span>
+                  </div>
+
+                  {graded && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3 text-sm">
+                      <p className="font-medium text-green-800">
+                        Score: <span className="text-lg">{a.mySubmission?.grade}</span>/{a.maxMarks}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="mt-auto">
+                    <Button
+                      size="sm"
+                      variant={submitted ? "outline" : "default"}
+                      className="w-full"
+                      onClick={() => {
+                        setSelectedAssignment({ id: a.id, title: a.title, maxMarks: a.maxMarks, dueDate: a.dueDate, description: a.description });
+                        setSubmitForm({ textContent: "", fileUrl: "" });
+                        setSubmitOpen(true);
+                      }}
+                    >
+                      {submitted ? "Update Submission" : "Submit Assignment"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Submit Dialog */}
+      <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Submit: {selectedAssignment?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {selectedAssignment?.description && (
+              <div className="bg-muted rounded-lg p-3 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground mb-1">Instructions:</p>
+                {selectedAssignment.description}
+              </div>
+            )}
+            <div>
+              <Label>Your Answer / Notes</Label>
+              <Textarea
+                value={submitForm.textContent}
+                onChange={e => setSubmitForm(f => ({ ...f, textContent: e.target.value }))}
+                placeholder="Write your answer or notes here..."
+                rows={5}
+              />
+            </div>
+            <div>
+              <Label>File URL (optional)</Label>
+              <Input
+                value={submitForm.fileUrl}
+                onChange={e => setSubmitForm(f => ({ ...f, fileUrl: e.target.value }))}
+                placeholder="https://drive.google.com/... or any public link"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Paste a link to your uploaded file (Google Drive, Dropbox, etc.)</p>
+            </div>
+            <Button
+              className="w-full"
+              disabled={(!submitForm.textContent && !submitForm.fileUrl) || submitMut.isPending}
+              onClick={() => selectedAssignment && submitMut.mutate({
+                assignmentId: selectedAssignment.id,
+                textContent: submitForm.textContent || undefined,
+                fileUrl: submitForm.fileUrl || undefined,
+              })}
+            >
+              {submitMut.isPending ? "Submitting..." : "Submit Assignment"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ─── Report Card Tab ──────────────────────────────────────────────────────────
+function ReportCardTab() {
+  return <ReportCard mode="student" />;
 }

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import PlatformLayout from "@/components/PlatformLayout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -25,7 +26,9 @@ const DEMO_INSTITUTE_ID = 1; // Will be replaced by real membership lookup
 
 export default function InstituteAdminPortal() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [_iaLoc] = useLocation();
+  const _iaSp = new URLSearchParams(_iaLoc.split("?")[1] || "");
+  const [activeTab, setActiveTab] = useState(_iaSp.get("tab") || "overview");
   const [dragOver, setDragOver] = useState(false);
   const [instituteId] = useState(DEMO_INSTITUTE_ID);
 
@@ -386,6 +389,12 @@ export default function InstituteAdminPortal() {
             <TabsTrigger value="attendance">Attendance Summary</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="alerts">⚠ Alerts</TabsTrigger>
+            <TabsTrigger value="fees">Fees</TabsTrigger>
+            <TabsTrigger value="teachers">Teachers</TabsTrigger>
+            <TabsTrigger value="students">Students</TabsTrigger>
+            <TabsTrigger value="parents">Parents</TabsTrigger>
+            <TabsTrigger value="mapping">Mapping</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           {/* Overview */}
@@ -1048,6 +1057,149 @@ export default function InstituteAdminPortal() {
           <TabsContent value="alerts" className="space-y-5">
             <AlertsTab instituteId={instituteId} />
           </TabsContent>
+
+          {/* Fees Tab */}
+          <TabsContent value="fees" className="space-y-5">
+            <FeesTab instituteId={instituteId} />
+          </TabsContent>
+
+          {/* Teachers */}
+          <TabsContent value="teachers" className="space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Teachers ({teachers.data?.length ?? 0})</h2>
+              <Button size="sm" className="gap-2" onClick={() => { setInviteForm(f => ({ ...f, role: "teacher" })); setShowInviteDialog(true); }}>
+                <UserPlus className="w-4 h-4" /> Invite Teacher
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {teachers.data?.map((m: any) => (
+                <div key={m.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-sm">{m.name?.[0] ?? "T"}</div>
+                    <div>
+                      <div className="font-medium text-gray-900">{m.name}</div>
+                      <div className="text-xs text-gray-500">{m.email}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50">Teacher</Badge>
+                    <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => deactivateMember.mutate({ memberId: m.id, instituteId })}><UserX className="w-4 h-4" /></Button>
+                  </div>
+                </div>
+              ))}
+              {(teachers.data?.length ?? 0) === 0 && (
+                <div className="text-center py-10 text-muted-foreground"><UserCheck className="w-10 h-10 mx-auto mb-2 opacity-30" /><p className="text-sm">No teachers yet. Invite one to get started.</p></div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Students */}
+          <TabsContent value="students" className="space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Students ({students.data?.length ?? 0})</h2>
+              <Button size="sm" className="gap-2" onClick={() => { setInviteForm(f => ({ ...f, role: "student" })); setShowInviteDialog(true); }}>
+                <UserPlus className="w-4 h-4" /> Invite Student
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {students.data?.map((m: any) => (
+                <div key={m.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">{m.name?.[0] ?? "S"}</div>
+                    <div>
+                      <div className="font-medium text-gray-900">{m.name}</div>
+                      <div className="text-xs text-gray-500">{m.email}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-blue-700 border-blue-200 bg-blue-50">Student</Badge>
+                    <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => { setEnrollStudent({ memberId: m.id, userId: m.userId, name: m.name }); setShowEnrollDialog(true); }}><Plus className="w-3 h-3" /> Enroll</Button>
+                    <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => deactivateMember.mutate({ memberId: m.id, instituteId })}><UserX className="w-4 h-4" /></Button>
+                  </div>
+                </div>
+              ))}
+              {(students.data?.length ?? 0) === 0 && (
+                <div className="text-center py-10 text-muted-foreground"><GraduationCap className="w-10 h-10 mx-auto mb-2 opacity-30" /><p className="text-sm">No students yet. Invite one to get started.</p></div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Parents */}
+          <TabsContent value="parents" className="space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Parents ({parents.data?.length ?? 0})</h2>
+              <Button size="sm" className="gap-2" onClick={() => { setInviteForm(f => ({ ...f, role: "parent" })); setShowInviteDialog(true); }}>
+                <UserPlus className="w-4 h-4" /> Invite Parent
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {parents.data?.map((m: any) => (
+                <div key={m.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-sm">{m.name?.[0] ?? "P"}</div>
+                    <div>
+                      <div className="font-medium text-gray-900">{m.name}</div>
+                      <div className="text-xs text-gray-500">{m.email}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-purple-700 border-purple-200 bg-purple-50">Parent</Badge>
+                    <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => deactivateMember.mutate({ memberId: m.id, instituteId })}><UserX className="w-4 h-4" /></Button>
+                  </div>
+                </div>
+              ))}
+              {(parents.data?.length ?? 0) === 0 && (
+                <div className="text-center py-10 text-muted-foreground"><Users className="w-10 h-10 mx-auto mb-2 opacity-30" /><p className="text-sm">No parents yet. Invite one to get started.</p></div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Teacher-Class-Subject Mapping */}
+          <TabsContent value="mapping" className="space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Teacher → Class → Subject Mapping</h2>
+              <Button size="sm" className="gap-2" onClick={() => setShowMappingDialog(true)}><LinkIcon className="w-4 h-4" /> Assign Teacher</Button>
+            </div>
+            <div className="space-y-2">
+              {teacherMappings.data?.map((m: any) => (
+                <div key={m.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge className="bg-green-100 text-green-800">{m.teacherName || "Teacher"}</Badge>
+                    <span className="text-gray-400">→</span>
+                    <Badge className="bg-blue-100 text-blue-800">{m.className || "Class"}</Badge>
+                    <span className="text-gray-400">→</span>
+                    <Badge className="bg-purple-100 text-purple-800">{m.subjectName || "Subject"}</Badge>
+                  </div>
+                </div>
+              ))}
+              {(teacherMappings.data?.length ?? 0) === 0 && (
+                <div className="text-center py-10 text-muted-foreground"><LinkIcon className="w-10 h-10 mx-auto mb-2 opacity-30" /><p className="text-sm">No mappings yet. Assign a teacher to a class and subject.</p></div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Settings */}
+          <TabsContent value="settings" className="space-y-5">
+            <h2 className="text-lg font-semibold text-gray-900">Institute Settings</h2>
+            <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-gray-700">Institute Name</Label>
+                <Input className="mt-1" defaultValue="My Institute" disabled />
+                <p className="text-xs text-gray-400 mt-1">Contact Super Admin to change institute name</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-gray-700">Academic Year</Label>
+                <Input className="mt-1" defaultValue="2025-26" disabled />
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-gray-700">Exam Focus</Label>
+                <Input className="mt-1" defaultValue="JEE Main + Advanced" disabled />
+              </div>
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-sm text-gray-500">For advanced settings and configuration, please contact your Super Admin.</p>
+              </div>
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
     </PlatformLayout>
@@ -1160,6 +1312,310 @@ function AlertsTab({ instituteId }: { instituteId: number }) {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Fees Tab Component ───────────────────────────────────────────────────────
+function FeesTab({ instituteId }: { instituteId: number }) {
+  const [viewMode, setViewMode] = useState<"list" | "report">("list");
+  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "paid" | "overdue">("all");
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState({ studentMemberId: "", feeType: "tuition", amount: "", dueDate: "", description: "" });
+  const [markPaidId, setMarkPaidId] = useState<number | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentNote, setPaymentNote] = useState("");
+
+  const { data: feeRecordsData, refetch } = trpc.fees.listAll.useQuery({ status: filterStatus === "all" ? "all" : filterStatus });
+  const { data: monthlyReport } = trpc.fees.monthlyReport.useQuery({ month: selectedMonth });
+  const { data: members } = trpc.erp.listInstituteMembers.useQuery({ instituteId, role: "student" });
+
+  const createMut = trpc.fees.create.useMutation({
+    onSuccess: () => { toast.success("Fee record created"); setAddOpen(false); refetch(); setAddForm({ studentMemberId: "", feeType: "tuition", amount: "", dueDate: "", description: "" }); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const markPaidMut = trpc.fees.recordPayment.useMutation({
+    onSuccess: () => { toast.success("Payment recorded"); setMarkPaidId(null); setPaymentAmount(""); setPaymentNote(""); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const remindMut = trpc.fees.sendReminder.useMutation({
+    onSuccess: (data) => toast.success(`Reminder sent to ${data.emailsSent} recipient(s)`),
+    onError: (e) => toast.error(e.message),
+  });
+
+  const statusColor: Record<string, string> = {
+    pending: "text-amber-600 bg-amber-50 border-amber-200",
+    paid: "text-green-600 bg-green-50 border-green-200",
+    overdue: "text-red-600 bg-red-50 border-red-200",
+    partial: "text-blue-600 bg-blue-50 border-blue-200",
+  };
+
+  // Get month options (last 6 months)
+  const monthOptions = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    const val = d.toISOString().slice(0, 7);
+    const label = d.toLocaleString("en-IN", { month: "long", year: "numeric" });
+    return { val, label };
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-xl font-semibold">Fee Management</h2>
+          <p className="text-sm text-muted-foreground">Track student fee payments, send reminders, and view monthly reports</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant={viewMode === "list" ? "default" : "outline"} size="sm" onClick={() => setViewMode("list")}>
+            Fee Records
+          </Button>
+          <Button variant={viewMode === "report" ? "default" : "outline"} size="sm" onClick={() => setViewMode("report")}>
+            Monthly Report
+          </Button>
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-2"><Plus className="w-4 h-4" />Add Fee Record</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader><DialogTitle>Create Fee Record</DialogTitle></DialogHeader>
+              <div className="space-y-4 py-2">
+                <div>
+                  <Label>Student</Label>
+                  <Select value={addForm.studentMemberId} onValueChange={v => setAddForm(f => ({ ...f, studentMemberId: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Select student" /></SelectTrigger>
+                    <SelectContent>
+                      {members?.map(m => (
+                        <SelectItem key={m.memberId} value={String(m.memberId)}>{m.name ?? `Member #${m.memberId}`}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Fee Type</Label>
+                    <Select value={addForm.feeType} onValueChange={v => setAddForm(f => ({ ...f, feeType: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tuition">Tuition</SelectItem>
+                        <SelectItem value="exam">Exam Fee</SelectItem>
+                        <SelectItem value="lab">Lab Fee</SelectItem>
+                        <SelectItem value="library">Library</SelectItem>
+                        <SelectItem value="transport">Transport</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Amount (₹)</Label>
+                    <Input type="number" value={addForm.amount} onChange={e => setAddForm(f => ({ ...f, amount: e.target.value }))} placeholder="5000" min={0} />
+                  </div>
+                </div>
+                <div>
+                  <Label>Due Date</Label>
+                  <Input type="date" value={addForm.dueDate} onChange={e => setAddForm(f => ({ ...f, dueDate: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Description (optional)</Label>
+                  <Input value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} placeholder="e.g. Q1 2026 Tuition Fee" />
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={!addForm.studentMemberId || !addForm.amount || !addForm.dueDate || createMut.isPending}
+                  onClick={() => createMut.mutate({
+                    studentMemberId: Number(addForm.studentMemberId),
+                    feeType: addForm.feeType,
+                    amount: Number(addForm.amount),
+                    dueDate: addForm.dueDate,
+                    description: addForm.description || undefined,
+                  })}
+                >
+                  {createMut.isPending ? "Creating..." : "Create Fee Record"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {viewMode === "list" && (
+        <div className="space-y-4">
+          {/* Filter bar */}
+          <div className="flex gap-2 flex-wrap">
+            {(["all", "pending", "paid", "overdue"] as const).map(s => (
+              <Button
+                key={s}
+                size="sm"
+                variant={filterStatus === s ? "default" : "outline"}
+                onClick={() => setFilterStatus(s)}
+                className="capitalize"
+              >
+                {s}
+              </Button>
+            ))}
+          </div>
+
+          {/* Fee records */}
+          {!feeRecordsData || feeRecordsData.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground border rounded-xl">
+              <FileText className="w-10 h-10 mx-auto mb-3 opacity-20" />
+              <p className="font-medium">No fee records found</p>
+              <p className="text-sm mt-1">Create fee records for students to track payments</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {feeRecordsData.map((record: any) => (
+                <Card key={record.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium">{record.studentName ?? `Student #${record.studentMemberId}`}</p>
+                          <Badge className={`text-xs border ${statusColor[record.status] ?? "text-gray-600"}`} variant="outline">
+                            {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs capitalize">{record.feeType}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          {record.description ?? `${record.feeType} fee`}
+                        </p>
+                        <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                          <span>Due: {record.dueDate}</span>
+                          {record.paidAmount > 0 && <span>Paid: ₹{record.paidAmount.toLocaleString("en-IN")}</span>}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-lg font-bold">₹{Number(record.amount).toLocaleString("en-IN")}</p>
+                        {record.paidAmount > 0 && record.paidAmount < Number(record.amount) && (
+                          <p className="text-xs text-amber-600">Balance: ₹{(Number(record.amount) - record.paidAmount).toLocaleString("en-IN")}</p>
+                        )}
+                        <div className="flex gap-2 mt-2 justify-end">
+                          {record.status !== "paid" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs"
+                                onClick={() => remindMut.mutate({ feeRecordId: record.id })}
+                                disabled={remindMut.isPending}
+                              >
+                                <Bell className="w-3 h-3 mr-1" />Remind
+                              </Button>
+                              <Dialog open={markPaidId === record.id} onOpenChange={open => { if (!open) setMarkPaidId(null); }}>
+                                <DialogTrigger asChild>
+                                  <Button size="sm" className="text-xs" onClick={() => { setMarkPaidId(record.id); setPaymentAmount(String(Number(record.amount) - record.paidAmount)); }}>
+                                    <CheckCircle2 className="w-3 h-3 mr-1" />Mark Paid
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-sm">
+                                  <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
+                                  <div className="space-y-4 py-2">
+                                    <div>
+                                      <Label>Payment Amount (₹)</Label>
+                                      <Input type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} min={1} max={Number(record.amount)} />
+                                    </div>
+                                    <div>
+                                      <Label>Note (optional)</Label>
+                                      <Input value={paymentNote} onChange={e => setPaymentNote(e.target.value)} placeholder="e.g. Cash payment" />
+                                    </div>
+                                    <Button
+                                      className="w-full"
+                                      disabled={!paymentAmount || markPaidMut.isPending}
+                                      onClick={() => markPaidMut.mutate({ feeRecordId: record.id, amountPaid: Number(paymentAmount), notes: paymentNote || undefined })}
+                                    >
+                                      {markPaidMut.isPending ? "Recording..." : "Record Payment"}
+                                    </Button>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {viewMode === "report" && (
+        <div className="space-y-5">
+          <div className="flex items-center gap-3">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {monthOptions.map(o => (
+                  <SelectItem key={o.val} value={o.val}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">Monthly Fee Collection Report</span>
+          </div>
+
+          {!monthlyReport ? (
+            <div className="text-center py-12 text-muted-foreground border rounded-xl">
+              <BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-20" />
+              <p>No data for this month</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: "Total Billed", value: `₹${monthlyReport.totalDue.toLocaleString("en-IN")}`, color: "text-indigo-700 bg-indigo-50" },
+                  { label: "Collected", value: `₹${monthlyReport.totalPaid.toLocaleString("en-IN")}`, color: "text-green-700 bg-green-50" },
+                  { label: "Pending", value: `₹${monthlyReport.totalPending.toLocaleString("en-IN")}`, color: "text-amber-700 bg-amber-50" },
+                  { label: "Collection Rate", value: `${monthlyReport.collectionRate}%`, color: "text-blue-700 bg-blue-50" },
+                ].map(s => (
+                  <div key={s.label} className={`rounded-xl p-4 text-center ${s.color}`}>
+                    <p className="text-2xl font-bold">{s.value}</p>
+                    <p className="text-xs mt-0.5">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Status breakdown */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Status Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {[
+                      { label: "Paid", count: monthlyReport.breakdown.paid, color: "bg-green-500" },
+                      { label: "Pending", count: monthlyReport.breakdown.pending, color: "bg-amber-400" },
+                      { label: "Overdue", count: monthlyReport.breakdown.overdue, color: "bg-red-500" },
+                      { label: "Waived", count: monthlyReport.breakdown.waived, color: "bg-blue-400" },
+                    ].map(s => (
+                      <div key={s.label} className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${s.color}`} />
+                        <span className="text-sm w-20">{s.label}</span>
+                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${s.color}`}
+                            style={{ width: `${monthlyReport.totalRecords > 0 ? (s.count / monthlyReport.totalRecords) * 100 : 0}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium w-8 text-right">{s.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Per-student breakdown */}
+
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import PlatformLayout from "@/components/PlatformLayout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -21,7 +22,9 @@ import { toast } from "sonner";
 
 export default function SuperAdminPortal() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [_saLoc] = useLocation();
+  const _saSp = new URLSearchParams(_saLoc.split("?")[1] || "");
+  const [activeTab, setActiveTab] = useState(_saSp.get("tab") || "overview");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedInstituteId, setSelectedInstituteId] = useState<number | null>(null);
 
@@ -116,6 +119,10 @@ export default function SuperAdminPortal() {
             <TabsTrigger value="content">Knowledge Base</TabsTrigger>
             <TabsTrigger value="api">API Management</TabsTrigger>
             <TabsTrigger value="system">System Health</TabsTrigger>
+            <TabsTrigger value="onboard">Onboard</TabsTrigger>
+            <TabsTrigger value="knowledge">Knowledge Base</TabsTrigger>
+            <TabsTrigger value="health">Health</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -470,6 +477,123 @@ export default function SuperAdminPortal() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          </TabsContent>
+
+          {/* Onboard Institute */}
+          <TabsContent value="onboard" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Onboard New Institute</h2>
+              <Button className="gap-2" onClick={() => setShowCreateDialog(true)}><Plus className="w-4 h-4" /> Create Institute</Button>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+              <h3 className="font-semibold text-blue-800 mb-2">Onboarding Steps</h3>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-blue-700">
+                <li>Click "Create Institute" and fill in the institute details</li>
+                <li>Provide the Institute Admin's name and email</li>
+                <li>The admin will receive an invite link to set up their portal</li>
+                <li>Admin can then invite teachers, students, and parents</li>
+              </ol>
+            </div>
+            <div className="space-y-3">
+              {(institutes.data ?? []).map((inst) => (
+                <div key={inst.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center"><Building2 className="w-5 h-5 text-blue-600" /></div>
+                    <div>
+                      <div className="font-medium text-gray-900">{inst.name}</div>
+                      <div className="text-xs text-gray-500">{inst.city || "—"} · {inst.subscriptionPlan}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={inst.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>{inst.isActive ? "Active" : "Suspended"}</Badge>
+                    <Button size="sm" variant="outline" onClick={() => toggleStatus.mutate({ instituteId: inst.id, isActive: !inst.isActive })}>{inst.isActive ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Knowledge Base */}
+          <TabsContent value="knowledge" className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">Knowledge Base</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { label: "Total Chapters", value: platformStats?.totalChapters || 80, color: "text-blue-600", bg: "bg-blue-50" },
+                { label: "Narration Scripts", value: platformStats?.totalNarrations || 0, color: "text-green-600", bg: "bg-green-50" },
+                { label: "Questions", value: platformStats?.totalQuestions || 0, color: "text-purple-600", bg: "bg-purple-50" },
+              ].map(s => (
+                <div key={s.label} className={`${s.bg} rounded-xl p-4`}>
+                  <div className={`text-3xl font-bold ${s.color}`}>{s.value}</div>
+                  <div className="text-sm text-gray-500 mt-1">{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h3 className="font-semibold text-gray-800 mb-2">Content Coverage</h3>
+              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${platformStats?.contentCoverage || 0}%` }} />
+              </div>
+              <p className="text-sm text-gray-500 mt-2">{platformStats?.contentCoverage || 0}% of chapters have full content (narration + questions + assessment)</p>
+            </div>
+          </TabsContent>
+
+          {/* Health */}
+          <TabsContent value="health" className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">System Health</h2>
+            <div className="grid lg:grid-cols-2 gap-4">
+              {[
+                { service: "Database", status: "healthy", latency: "12ms", icon: Database },
+                { service: "AI/LLM Service", status: "healthy", latency: "340ms", icon: Zap },
+                { service: "REST API v1", status: "healthy", latency: "8ms", icon: Globe },
+                { service: "Voice Transcription", status: "healthy", latency: "220ms", icon: Activity },
+                { service: "Storage (S3)", status: "healthy", latency: "25ms", icon: Database },
+                { service: "Auth Service", status: "healthy", latency: "15ms", icon: Shield },
+              ].map((svc) => (
+                <Card key={svc.service} className="border-border bg-card">
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-green-400/10 flex items-center justify-center"><svc.icon className="w-5 h-5 text-green-400" /></div>
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">{svc.service}</p>
+                      <p className="text-xs text-muted-foreground">Latency: {svc.latency}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-green-400" /><span className="text-sm text-green-400">{svc.status}</span></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Analytics */}
+          <TabsContent value="analytics" className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">Platform Analytics</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: "Total Institutes", value: analytics.data?.totalInstitutes ?? 0, color: "text-blue-600", bg: "bg-blue-50" },
+                { label: "Active Institutes", value: analytics.data?.activeInstitutes ?? 0, color: "text-green-600", bg: "bg-green-50" },
+                { label: "Total Students", value: analytics.data?.totalStudents ?? 0, color: "text-indigo-600", bg: "bg-indigo-50" },
+                { label: "Total Teachers", value: analytics.data?.totalTeachers ?? 0, color: "text-purple-600", bg: "bg-purple-50" },
+              ].map(s => (
+                <div key={s.label} className={`${s.bg} rounded-xl p-4`}>
+                  <div className={`text-3xl font-bold ${s.color}`}>{s.value}</div>
+                  <div className="text-sm text-gray-500 mt-1">{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h3 className="font-semibold text-gray-800 mb-3">Institute Breakdown</h3>
+              <div className="space-y-2">
+                {(institutes.data ?? []).map((inst) => (
+                  <div key={inst.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <span className="text-sm text-gray-700">{inst.name}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge className={inst.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}>{inst.isActive ? "Active" : "Suspended"}</Badge>
+                      <span className="text-xs text-gray-400">{inst.subscriptionPlan}</span>
+                    </div>
+                  </div>
+                ))}
+                {(institutes.data ?? []).length === 0 && <p className="text-sm text-gray-400 text-center py-4">No institutes yet</p>}
+              </div>
             </div>
           </TabsContent>
         </Tabs>

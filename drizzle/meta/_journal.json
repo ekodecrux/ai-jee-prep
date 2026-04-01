@@ -50,6 +50,13 @@
       "when": 1775012534967,
       "tag": "0006_military_banshee",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1775054056494,
+      "tag": "0007_slim_blockbuster",
+      "breakpoints": true
     }
   ]
 }

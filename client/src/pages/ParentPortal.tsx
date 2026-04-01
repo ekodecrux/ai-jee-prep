@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
+import ReportCard from "@/components/ReportCard";
 import PlatformLayout from "@/components/PlatformLayout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -16,7 +18,9 @@ import { toast } from "sonner";
 
 export default function ParentPortal() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [location] = useLocation();
+  const searchParams = new URLSearchParams(location.split("?")[1] || "");
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
 
 
   const { data: heatmapRaw } = trpc.analytics.getHeatmap.useQuery({});
@@ -77,6 +81,11 @@ export default function ParentPortal() {
             <TabsTrigger value="live-classes">Live Classes</TabsTrigger>
             <TabsTrigger value="schedule">Study Schedule</TabsTrigger>
             <TabsTrigger value="reports">Weekly Reports</TabsTrigger>
+            <TabsTrigger value="report-card">Report Card</TabsTrigger>
+            <TabsTrigger value="attendance">Attendance</TabsTrigger>
+            <TabsTrigger value="assignments">Assignments</TabsTrigger>
+            <TabsTrigger value="progress">Progress</TabsTrigger>
+            <TabsTrigger value="alerts">Alerts</TabsTrigger>
           </TabsList>
 
           {/* Overview */}
@@ -342,6 +351,128 @@ export default function ParentPortal() {
               <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-20" />
               <p className="font-medium">Weekly reports will appear here</p>
               <p className="text-sm mt-1">Reports are generated every Sunday with a full summary of the week's performance</p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="report-card" className="space-y-6">
+            <ReportCard mode="parent" />
+          </TabsContent>
+
+          {/* Attendance */}
+          <TabsContent value="attendance" className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">Child's Attendance</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              {[
+                { label: "Total Classes", value: "—", color: "text-blue-600", bg: "bg-blue-50" },
+                { label: "Present", value: "—", color: "text-green-600", bg: "bg-green-50" },
+                { label: "Attendance %", value: "—", color: "text-indigo-600", bg: "bg-indigo-50" },
+              ].map(s => (
+                <div key={s.label} className={`${s.bg} rounded-xl p-4 border border-opacity-20`}>
+                  <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
+                  <div className="text-sm text-gray-500 mt-1">{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-amber-700 font-medium mb-1">
+                <AlertCircle className="w-4 h-4" /> Attendance Tracking
+              </div>
+              <p className="text-sm text-amber-600">Detailed attendance records will appear here once the Institute Admin marks attendance for your child's class.</p>
+            </div>
+          </TabsContent>
+
+          {/* Assignments */}
+          <TabsContent value="assignments" className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">Child's Assignments</h2>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-blue-700 font-medium mb-1">
+                <FileText className="w-4 h-4" /> Assignment Overview
+              </div>
+              <p className="text-sm text-blue-600">Assignments created by teachers for your child's class will appear here. You can track submission status and grades.</p>
+            </div>
+            <div className="text-center py-10 text-muted-foreground">
+              <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No assignments found yet</p>
+            </div>
+          </TabsContent>
+
+          {/* Progress */}
+          <TabsContent value="progress" className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">Academic Progress</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white border border-gray-200 rounded-xl p-5">
+                <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-blue-500" /> Chapter Completion</h3>
+                <div className="space-y-3">
+                  {[
+                    { label: "Physics", green: greenChapters, total: 25 },
+                    { label: "Chemistry", green: 0, total: 28 },
+                    { label: "Mathematics", green: 0, total: 27 },
+                  ].map(s => (
+                    <div key={s.label}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-600">{s.label}</span>
+                        <span className="text-gray-800 font-medium">{s.green}/{s.total}</span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500 rounded-full" style={{ width: `${(s.green / s.total) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-5">
+                <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><Target className="w-4 h-4 text-indigo-500" /> JEE Readiness</h3>
+                {prediction ? (
+                  <div className="text-center">
+                    <div className="text-5xl font-bold text-indigo-600 mb-1">{prediction.predictedScore}<span className="text-xl text-gray-400">/360</span></div>
+                    <p className="text-sm text-gray-500">Predicted JEE Main Score</p>
+                    <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                      {["Physics", "Chemistry", "Mathematics"].map((sub, i) => (
+                        <div key={sub} className="bg-gray-50 rounded-lg p-2">
+                          <div className="text-lg font-bold text-gray-800">{(prediction.subjectScores as any)?.[sub.toLowerCase()]?.predicted || 0}</div>
+                          <div className="text-xs text-gray-400">{sub.slice(0, 4)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-gray-400">
+                    <Target className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Available after 5+ chapters completed</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Alerts */}
+          <TabsContent value="alerts" className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">Alerts &amp; Notifications</h2>
+            <div className="space-y-3">
+              {(redChapters + amberChapters) > 0 ? (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 text-red-700 font-medium mb-1">
+                    <AlertCircle className="w-4 h-4" /> Low Performance Alert
+                  </div>
+                  <p className="text-sm text-red-600">{redChapters} chapter(s) scored below 60%. Encourage your child to revisit these topics.</p>
+                </div>
+              ) : null}
+              {amberChapters > 0 ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 text-amber-700 font-medium mb-1">
+                    <AlertCircle className="w-4 h-4" /> Improvement Needed
+                  </div>
+                  <p className="text-sm text-amber-600">{amberChapters} chapter(s) scored between 60–79%. More practice recommended.</p>
+                </div>
+              ) : null}
+              {(redChapters + amberChapters) === 0 ? (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 text-green-700 font-medium mb-1">
+                    <CheckCircle2 className="w-4 h-4" /> All Clear
+                  </div>
+                  <p className="text-sm text-green-600">No alerts at the moment. Your child is on track!</p>
+                </div>
+              ) : null}
             </div>
           </TabsContent>
         </Tabs>

@@ -1059,3 +1059,37 @@ export const lowAttendanceAlerts = mysqlTable("low_attendance_alerts", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type LowAttendanceAlert = typeof lowAttendanceAlerts.$inferSelect;
+
+// ─── Fee Records ──────────────────────────────────────────────────────────────
+export const feeRecords = mysqlTable("fee_records", {
+  id: int("id").autoincrement().primaryKey(),
+  instituteId: int("instituteId").notNull(),
+  studentId: int("studentId").notNull(),                             // institute_members.id
+  classId: int("classId"),                                           // classes.id (optional)
+  feeType: varchar("feeType", { length: 64 }).notNull(),             // "tuition", "exam", "lab", "misc"
+  description: varchar("description", { length: 256 }),
+  amount: float("amount").notNull(),                                 // Total fee amount
+  dueDate: timestamp("dueDate").notNull(),
+  status: mysqlEnum("status", ["pending", "paid", "overdue", "waived"]).default("pending").notNull(),
+  reminderSentAt: timestamp("reminderSentAt"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type FeeRecord = typeof feeRecords.$inferSelect;
+
+// ─── Fee Payments ─────────────────────────────────────────────────────────────
+export const feePayments = mysqlTable("fee_payments", {
+  id: int("id").autoincrement().primaryKey(),
+  feeRecordId: int("feeRecordId").notNull(),                         // feeRecords.id
+  instituteId: int("instituteId").notNull(),
+  studentId: int("studentId").notNull(),
+  amountPaid: float("amountPaid").notNull(),
+  paymentDate: timestamp("paymentDate").defaultNow().notNull(),
+  paymentMode: varchar("paymentMode", { length: 64 }),               // "cash", "upi", "bank_transfer", "cheque"
+  transactionRef: varchar("transactionRef", { length: 128 }),
+  recordedBy: int("recordedBy"),                                     // institute_members.id of admin
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type FeePayment = typeof feePayments.$inferSelect;

@@ -73,6 +73,32 @@ async function assertInstituteMember(db: Awaited<ReturnType<typeof getDb>>, user
 }
 
 export const erpRouter = router({
+  // ─── Get current user's ERP membership (role in institute) ───────────────
+  getMyMembership: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return null;
+    // Check if user is super_admin / admin first
+    const userRow = await db.select({ role: users.role }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+    if (userRow[0]?.role === "admin") return { role: "super_admin" as const, instituteId: null, instituteName: null };
+    // Otherwise look up institute membership
+    const [member] = await db.select({
+      role: instituteMembers.role,
+      instituteId: instituteMembers.instituteId,
+      instituteName: institutes.name,
+    })
+      .from(instituteMembers)
+      .leftJoin(institutes, eq(institutes.id, instituteMembers.instituteId))
+      .where(and(eq(instituteMembers.userId, ctx.user.id), eq(instituteMembers.isActive, true)))
+      .orderBy(desc(instituteMembers.joinedAt))
+      .limit(1);
+    if (!member) return { role: "student" as const, instituteId: null, instituteName: null };
+    return {
+      role: member.role as "institute_admin" | "teacher" | "student" | "parent",
+      instituteId: member.instituteId,
+      instituteName: member.instituteName,
+    };
+  }),
+
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SUPER ADMIN — Institute Management

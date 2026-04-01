@@ -1,309 +1,317 @@
 import { Link } from "wouter";
-import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { getLoginUrl } from "@/const";
 import {
-  Atom, FlaskConical, Calculator, GraduationCap, Target, BookOpen,
-  Clock, Trophy, ArrowRight, CheckCircle, Zap, Star, Code2,
-  ChevronRight, BarChart3, Lock, Unlock
+  GraduationCap, BookOpen, Users, BarChart3, Shield, ArrowRight,
+  CheckCircle, Star, Atom, FlaskConical, Calculator, Building2,
+  UserCheck, Heart, Layers, ChevronRight, Zap, Trophy, Target,
+  Code2, Brain
 } from "lucide-react";
 
-const SUBJECT_META = {
-  physics: { label: "Physics", icon: Atom, color: "text-physics", bg: "subject-bg-physics subject-physics", chapters: 25, desc: "Mechanics, Electrostatics, Optics, Modern Physics & more" },
-  chemistry: { label: "Chemistry", icon: FlaskConical, color: "text-chemistry", bg: "subject-bg-chemistry subject-chemistry", chapters: 28, desc: "Physical, Organic & Inorganic Chemistry with reactions" },
-  mathematics: { label: "Mathematics", icon: Calculator, color: "text-mathematics", bg: "subject-bg-mathematics subject-mathematics", chapters: 27, desc: "Calculus, Algebra, Coordinate Geometry, Probability & more" },
-};
+const ROLES = [
+  {
+    role: "Student",
+    icon: GraduationCap,
+    color: "from-indigo-500 to-blue-600",
+    bg: "bg-indigo-50 border-indigo-200",
+    text: "text-indigo-700",
+    desc: "Access your personalised study plan, chapter narrations, past papers, live classes, and performance analytics.",
+    features: ["80 chapters with narrations", "10 years past papers", "Chapter assessments", "Report card & heatmap"],
+  },
+  {
+    role: "Teacher",
+    icon: UserCheck,
+    color: "from-teal-500 to-emerald-600",
+    bg: "bg-teal-50 border-teal-200",
+    text: "text-teal-700",
+    desc: "Manage your classes, create lesson plans, conduct live sessions, assign homework, and track student progress.",
+    features: ["Lesson plan builder", "Live class scheduler", "Assignment & grading", "Bridge course approvals"],
+  },
+  {
+    role: "Parent",
+    icon: Heart,
+    color: "from-rose-500 to-pink-600",
+    bg: "bg-rose-50 border-rose-200",
+    text: "text-rose-700",
+    desc: "Monitor your child's attendance, chapter heatmap, report card, and receive real-time alerts from teachers.",
+    features: ["Attendance tracking", "Chapter heatmap view", "Report card download", "Low-attendance alerts"],
+  },
+  {
+    role: "Institute Admin",
+    icon: Building2,
+    color: "from-blue-500 to-cyan-600",
+    bg: "bg-blue-50 border-blue-200",
+    text: "text-blue-700",
+    desc: "Onboard teachers, students and parents, manage classes, track fees, and generate collection reports.",
+    features: ["User onboarding & invites", "Class & subject setup", "Fee management", "Attendance reports"],
+  },
+  {
+    role: "Super Admin",
+    icon: Shield,
+    color: "from-purple-500 to-indigo-600",
+    bg: "bg-purple-50 border-purple-200",
+    text: "text-purple-700",
+    desc: "Oversee all institutes on the platform, manage subscriptions, control global content, and monitor system health.",
+    features: ["Multi-institute dashboard", "Global content control", "API key management", "System health monitor"],
+  },
+];
 
 const FEATURES = [
-  { icon: BookOpen, title: "3000+ Word Narrations", desc: "Comprehensive teacher narration scripts for every chapter with multiple problem-solving approaches", color: "text-physics" },
-  { icon: Target, title: "10 Years Past Papers", desc: "Complete JEE Main & Advanced past questions (2014–2024) with detailed solutions, tagged by difficulty", color: "text-chemistry" },
-  { icon: Zap, title: "Dynamic Assessments", desc: "MCQ, NAT, and Integer type questions matching actual JEE pattern. 3 attempts/day for chapter tests", color: "text-mathematics" },
-  { icon: Lock, title: "Progressive Unlock", desc: "Class 11 → Class 12 gated progression. 80% Class 11 completion required before Class 12 unlocks", color: "text-yellow-400" },
-  { icon: BarChart3, title: "Analytics Dashboard", desc: "Track your progress, identify weak topics, and monitor your readiness for the actual exam", color: "text-blue-400" },
-  { icon: Code2, title: "REST API for ERP/LMS", desc: "Full API v1 with API key auth, versioning, and Swagger docs for integration with any platform", color: "text-green-400" },
+  { icon: BookOpen, title: "AI-Powered Narrations", desc: "3000+ word teacher narration scripts for every chapter with derivations, worked examples, and JEE tips.", color: "text-indigo-600", bg: "bg-indigo-50" },
+  { icon: Target, title: "10 Years Past Papers", desc: "Complete JEE Main & Advanced past questions (2014–2024) tagged by difficulty, type, and chapter.", color: "text-teal-600", bg: "bg-teal-50" },
+  { icon: BarChart3, title: "Performance Analytics", desc: "Chapter heatmap, score predictions, weak-topic alerts, and a 24-month adaptive study plan.", color: "text-blue-600", bg: "bg-blue-50" },
+  { icon: Layers, title: "Multi-Tenant ERP", desc: "Full institute management — onboard users, manage classes, track fees, and generate reports.", color: "text-purple-600", bg: "bg-purple-50" },
+  { icon: Zap, title: "Live Classes", desc: "Schedule and conduct live sessions with attendance tracking, recordings, and doubt boards.", color: "text-amber-600", bg: "bg-amber-50" },
+  { icon: Code2, title: "REST API v1", desc: "Full public API with versioning and API key auth — integrate with any ERP or LMS platform.", color: "text-rose-600", bg: "bg-rose-50" },
 ];
 
 const STATS = [
   { value: "80", label: "Chapters", sub: "All JEE topics" },
   { value: "2400+", label: "Past Questions", sub: "10 years of papers" },
-  { value: "3", label: "Subjects", sub: "Phy · Chem · Math" },
+  { value: "5", label: "User Roles", sub: "Multi-tenant" },
   { value: "24", label: "Month Plan", sub: "Class 11 + 12" },
 ];
 
-const HOW_IT_WORKS = [
-  { step: "01", title: "Start with Class 11", desc: "Begin with foundational chapters following NCERT order. Each chapter has narration + assessment." },
-  { step: "02", title: "Read & Learn", desc: "Study the 3000+ word teacher narration script with concepts, derivations, and worked examples." },
-  { step: "03", title: "Practice Past Papers", desc: "Solve 10 years of JEE Main & Advanced questions for the chapter, sorted by difficulty." },
-  { step: "04", title: "Take Chapter Assessment", desc: "Score 60%+ to unlock the next chapter. Timed chapter tests simulate actual JEE conditions." },
-  { step: "05", title: "Unlock Class 12", desc: "After 80% of Class 11 chapters, Class 12 content unlocks automatically." },
-  { step: "06", title: "Attempt Full Mocks", desc: "Complete all chapters to unlock full JEE Main & Advanced mock tests with real exam pattern." },
-];
-
 export default function Home() {
-  const { isAuthenticated } = useAuth();
-  const { data: allChapters } = trpc.chapters.listAll.useQuery({ examId: "jee_main" });
-
-  const chapterCount = allChapters?.length || 80;
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
-        <div className="container py-16 lg:py-24">
-          <div className="max-w-4xl">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-full px-4 py-1.5 text-sm text-primary mb-6">
-              <Star className="w-3.5 h-3.5" />
-              JEE Main + Advanced · Both Exams · 10 Years Past Papers
+    <div className="min-h-screen bg-white text-gray-900">
+      {/* Nav */}
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center">
+              <GraduationCap className="w-4 h-4 text-white" />
             </div>
-
-            {/* Headline */}
-            <h1 className="font-display text-4xl lg:text-6xl font-bold text-foreground leading-tight mb-6">
-              Master JEE with the{" "}
-              <span className="text-primary">Complete</span>{" "}
-              <span className="text-primary">Knowledge</span>{" "}
-              Repository
-            </h1>
-
-            <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-2xl">
-              {chapterCount} chapters across Physics, Chemistry & Mathematics. Comprehensive teacher
-              narration scripts, 10 years of past questions, dynamic assessments, and a 24-month
-              progressive study plan. Designed so that{" "}
-              <strong className="text-foreground">100% assessment completion = JEE topper.</strong>
-            </p>
-
-            {/* CTAs */}
-            <div className="flex flex-wrap gap-3 mb-12">
-              {isAuthenticated ? (
-                <>
-                  <Link href="/dashboard">
-                    <Button size="lg" className="gap-2">
-                      <GraduationCap className="w-5 h-5" />
-                      Go to Dashboard
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                  <Link href="/study-plan">
-                    <Button size="lg" variant="outline" className="gap-2">
-                      <Clock className="w-5 h-5" />
-                      View 24-Month Plan
-                    </Button>
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Button size="lg" onClick={() => window.location.href = getLoginUrl()} className="gap-2">
-                    <GraduationCap className="w-5 h-5" />
-                    Start Preparing Free
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                  <Link href="/study-plan">
-                    <Button size="lg" variant="outline" className="gap-2">
-                      <Clock className="w-5 h-5" />
-                      View Study Plan
-                    </Button>
-                  </Link>
-                </>
-              )}
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {STATS.map(stat => (
-                <div key={stat.label} className="stat-card text-center">
-                  <div className="text-2xl font-display font-bold text-primary">{stat.value}</div>
-                  <div className="text-sm font-semibold text-foreground">{stat.label}</div>
-                  <div className="text-xs text-muted-foreground">{stat.sub}</div>
-                </div>
-              ))}
-            </div>
+            <span className="font-bold text-gray-900 text-lg">ExamForge AI</span>
+            <span className="hidden sm:inline text-xs text-gray-400 border border-gray-200 rounded-full px-2 py-0.5 ml-1">Multi-Tenant LMS</span>
           </div>
+          <nav className="hidden md:flex items-center gap-6 text-sm text-gray-500">
+            <a href="#roles" className="hover:text-gray-900 transition-colors">Roles</a>
+            <a href="#features" className="hover:text-gray-900 transition-colors">Features</a>
+            <Link href="/api-docs" className="hover:text-gray-900 transition-colors">API Docs</Link>
+            <Link href="/search" className="hover:text-gray-900 transition-colors">Search</Link>
+          </nav>
+          <Button onClick={() => window.location.href = getLoginUrl()} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white" size="sm">
+            Sign In <ArrowRight className="w-3.5 h-3.5" />
+          </Button>
         </div>
-      </section>
+      </header>
 
-      {/* Subjects Section */}
-      <section className="container py-12">
-        <div className="text-center mb-8">
-          <h2 className="font-display text-2xl font-bold text-foreground mb-2">Three Subjects, One Platform</h2>
-          <p className="text-muted-foreground text-sm">Complete chapter-wise coverage for all JEE subjects</p>
+      {/* Hero */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-blue-50 pt-20 pb-24">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-100 rounded-full opacity-40 blur-3xl -translate-y-1/2 translate-x-1/3" />
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-100 rounded-full opacity-30 blur-3xl translate-y-1/2 -translate-x-1/4" />
         </div>
-        <div className="grid sm:grid-cols-3 gap-4">
-          {(Object.entries(SUBJECT_META) as [string, typeof SUBJECT_META.physics][]).map(([id, meta]) => {
-            const Icon = meta.icon;
-            return (
-              <Link key={id} href={`/subject/${id}`}>
-                <div className={`${meta.bg} chapter-card group h-full`}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 rounded-xl bg-card flex items-center justify-center">
-                      <Icon className={`w-6 h-6 ${meta.color}`} />
-                    </div>
-                    <div>
-                      <div className="font-display font-bold text-foreground">{meta.label}</div>
-                      <div className={`text-sm ${meta.color}`}>{meta.chapters} chapters</div>
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">{meta.desc}</p>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors">
-                    Explore chapters <ChevronRight className="w-3 h-3" />
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="container py-12">
-        <div className="text-center mb-8">
-          <h2 className="font-display text-2xl font-bold text-foreground mb-2">Everything You Need to Crack JEE</h2>
-          <p className="text-muted-foreground text-sm">A complete ecosystem — not just notes, not just questions, but a full learning system</p>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {FEATURES.map(f => {
-            const Icon = f.icon;
-            return (
-              <div key={f.title} className="bg-card border border-border rounded-xl p-5 hover:border-primary/30 transition-all">
-                <div className={`w-10 h-10 rounded-xl bg-background flex items-center justify-center mb-3`}>
-                  <Icon className={`w-5 h-5 ${f.color}`} />
-                </div>
-                <h3 className="font-semibold text-foreground mb-1">{f.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="container py-12">
-        <div className="text-center mb-8">
-          <h2 className="font-display text-2xl font-bold text-foreground mb-2">How the Progressive Learning System Works</h2>
-          <p className="text-muted-foreground text-sm">Designed to mirror the NCERT Class 11 → Class 12 flow so you never feel lost</p>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {HOW_IT_WORKS.map(step => (
-            <div key={step.step} className="bg-card border border-border rounded-xl p-5">
-              <div className="font-mono text-3xl font-bold text-primary/30 mb-2">{step.step}</div>
-              <h3 className="font-semibold text-foreground mb-1">{step.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Daily Schedule Preview */}
-      <section className="container py-12">
-        <div className="hero-gradient rounded-2xl p-6 lg:p-8">
-          <div className="grid lg:grid-cols-2 gap-8 items-center">
-            <div>
-              <h2 className="font-display text-2xl font-bold text-foreground mb-3">Optimized Daily Schedule</h2>
-              <p className="text-muted-foreground text-sm leading-relaxed mb-4">
-                The platform follows a research-backed daily time split: Mathematics gets the most time
-                (3h/day) as it requires the most practice, followed by Physics (2.5h/day) and Chemistry (2h/day).
-              </p>
-              <div className="space-y-2">
-                {[
-                  { subject: "Mathematics", hours: "3h/day", color: "text-mathematics", bg: "bg-mathematics/10 border-mathematics/30" },
-                  { subject: "Physics", hours: "2.5h/day", color: "text-physics", bg: "bg-physics/10 border-physics/30" },
-                  { subject: "Chemistry", hours: "2h/day", color: "text-chemistry", bg: "bg-chemistry/10 border-chemistry/30" },
-                ].map(s => (
-                  <div key={s.subject} className={`flex items-center justify-between p-3 rounded-xl border ${s.bg}`}>
-                    <span className={`text-sm font-semibold ${s.color}`}>{s.subject}</span>
-                    <span className="text-sm font-bold text-foreground">{s.hours}</span>
-                  </div>
-                ))}
-              </div>
-              <Link href="/study-plan">
-                <Button className="mt-4 gap-2" variant="outline">
-                  View Full 24-Month Plan <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
-            <div className="space-y-3">
-              <div className="text-sm font-semibold text-foreground mb-2">Assessment Scoring System</div>
-              {[
-                { label: "Pass threshold", value: "60%", desc: "Minimum to unlock next chapter", icon: CheckCircle, color: "text-green-400" },
-                { label: "Daily attempts", value: "3/day", desc: "Chapter tests (practice mode unlimited)", icon: Target, color: "text-primary" },
-                { label: "Mock test unlock", value: "100%", desc: "All chapters in subject must be completed", icon: Trophy, color: "text-yellow-400" },
-                { label: "JEE Topper goal", value: "100%", desc: "100% assessment completion = guaranteed topper", icon: Zap, color: "text-orange-400" },
-              ].map(item => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.label} className="flex items-center gap-3 bg-card/60 border border-border/50 rounded-xl p-3">
-                    <Icon className={`w-5 h-5 ${item.color} flex-shrink-0`} />
-                    <div className="flex-1">
-                      <div className="text-xs text-muted-foreground">{item.label}</div>
-                      <div className="text-xs text-muted-foreground">{item.desc}</div>
-                    </div>
-                    <div className={`text-lg font-bold ${item.color}`}>{item.value}</div>
-                  </div>
-                );
-              })}
-            </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 bg-indigo-100 border border-indigo-200 rounded-full px-4 py-1.5 text-sm text-indigo-700 mb-6">
+            <Star className="w-3.5 h-3.5 fill-indigo-500 text-indigo-500" />
+            JEE Main + Advanced · 5 User Roles · Full ERP
           </div>
-        </div>
-      </section>
-
-      {/* API Section */}
-      <section className="container py-12">
-        <div className="bg-card border border-border rounded-2xl p-6 lg:p-8">
-          <div className="flex items-start gap-4 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-green-900/20 border border-green-700/30 flex items-center justify-center flex-shrink-0">
-              <Code2 className="w-6 h-6 text-green-400" />
-            </div>
-            <div>
-              <h2 className="font-display text-xl font-bold text-foreground mb-1">Universal Knowledge Platform API</h2>
-              <p className="text-muted-foreground text-sm">
-                Not just a JEE app — a standalone knowledge repository with a full REST API v1.
-                Integrate with any ERP, LMS, or academic platform. Extensible to NEET, GATE, UPSC, and any curriculum.
-              </p>
-            </div>
-          </div>
-          <div className="bg-background border border-border rounded-xl p-4 mb-4">
-            <code className="text-sm text-green-300 font-mono">
-              GET /api/v1/chapters?subjectId=physics&amp;examId=jee_main<br />
-              GET /api/v1/chapters/:id/narration<br />
-              GET /api/v1/questions?chapterId=PHY_C11_01&amp;difficulty=hard<br />
-              GET /api/v1/assessments?chapterId=PHY_C11_01<br />
-              GET /api/v1/search?q=kinematics
-            </code>
-          </div>
-          <Link href="/api-docs">
-            <Button variant="outline" className="gap-2">
-              View Full API Documentation <ArrowRight className="w-4 h-4" />
-            </Button>
-          </Link>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="container py-12 pb-16">
-        <div className="text-center">
-          <h2 className="font-display text-2xl font-bold text-foreground mb-3">Ready to Start Your JEE Journey?</h2>
-          <p className="text-muted-foreground text-sm mb-6 max-w-lg mx-auto">
-            Join thousands of students using the most comprehensive JEE preparation platform.
-            Start from Chapter 1 and work your way to JEE topper status.
+          <h1 className="text-5xl lg:text-7xl font-extrabold text-gray-900 leading-tight mb-6 tracking-tight">
+            The Complete<br />
+            <span className="bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">JEE Preparation</span><br />
+            Platform
+          </h1>
+          <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">
+            One platform for students, teachers, parents, and institute admins.
+            AI-powered narrations, past papers, live classes, fee management, and analytics — all in one place.
           </p>
-          {isAuthenticated ? (
-            <Link href="/subject/physics">
-              <Button size="lg" className="gap-2">
-                <Atom className="w-5 h-5" />
-                Start with Physics
-                <ArrowRight className="w-4 h-4" />
+          <div className="flex flex-wrap gap-4 justify-center mb-16">
+            <Button size="lg" onClick={() => window.location.href = getLoginUrl()} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white h-12 px-8 text-base font-semibold shadow-lg shadow-indigo-200">
+              <GraduationCap className="w-5 h-5" />Get Started Free<ArrowRight className="w-4 h-4" />
+            </Button>
+            <Link href="/api-docs">
+              <Button size="lg" variant="outline" className="gap-2 h-12 px-8 text-base border-gray-300">
+                <Code2 className="w-5 h-5" />View API Docs
               </Button>
             </Link>
-          ) : (
-            <Button size="lg" onClick={() => window.location.href = getLoginUrl()} className="gap-2">
-              <GraduationCap className="w-5 h-5" />
-              Get Started Free
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          )}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
+            {STATS.map(s => (
+              <div key={s.label} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+                <div className="text-3xl font-extrabold text-indigo-600 mb-0.5">{s.value}</div>
+                <div className="text-sm font-semibold text-gray-700">{s.label}</div>
+                <div className="text-xs text-gray-400">{s.sub}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
+
+      {/* Role Cards */}
+      <section id="roles" className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">One Platform, Five Roles</h2>
+            <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+              Each user type gets a completely separate, role-specific portal with only the features they need. No clutter, no confusion.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {ROLES.map(r => {
+              const Icon = r.icon;
+              return (
+                <div key={r.role} className={`border rounded-2xl p-6 ${r.bg} hover:shadow-md transition-shadow`}>
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${r.color} flex items-center justify-center mb-4 shadow-sm`}>
+                    <Icon className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className={`text-xl font-bold mb-2 ${r.text}`}>{r.role}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed mb-4">{r.desc}</p>
+                  <ul className="space-y-1.5 mb-5">
+                    {r.features.map(f => (
+                      <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
+                        <CheckCircle className={`w-4 h-4 flex-shrink-0 ${r.text}`} />{f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button onClick={() => window.location.href = getLoginUrl()} className={`w-full gap-2 bg-gradient-to-r ${r.color} text-white border-0 hover:opacity-90`} size="sm">
+                    Sign in as {r.role} <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="py-24 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Everything You Need to Crack JEE</h2>
+            <p className="text-lg text-gray-500 max-w-2xl mx-auto">A complete ecosystem — not just notes, not just questions, but a full learning and management system.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {FEATURES.map(f => {
+              const Icon = f.icon;
+              return (
+                <div key={f.title} className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-shadow">
+                  <div className={`w-10 h-10 rounded-xl ${f.bg} flex items-center justify-center mb-4`}>
+                    <Icon className={`w-5 h-5 ${f.color}`} />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">{f.title}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Subjects */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Three Subjects, One Platform</h2>
+            <p className="text-lg text-gray-500">Complete chapter-wise coverage for all JEE subjects</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { icon: Atom, label: "Physics", chapters: 25, color: "from-blue-500 to-indigo-600", bg: "bg-blue-50 border-blue-100", text: "text-blue-700", desc: "Mechanics, Electrostatics, Optics, Modern Physics & more", path: "/subject/physics" },
+              { icon: FlaskConical, label: "Chemistry", chapters: 28, color: "from-teal-500 to-green-600", bg: "bg-teal-50 border-teal-100", text: "text-teal-700", desc: "Physical, Organic & Inorganic Chemistry with reactions", path: "/subject/chemistry" },
+              { icon: Calculator, label: "Mathematics", chapters: 27, color: "from-amber-500 to-orange-600", bg: "bg-amber-50 border-amber-100", text: "text-amber-700", desc: "Calculus, Algebra, Coordinate Geometry, Probability & more", path: "/subject/mathematics" },
+            ].map(s => {
+              const Icon = s.icon;
+              return (
+                <Link key={s.label} href={s.path}>
+                  <div className={`border rounded-2xl p-6 ${s.bg} hover:shadow-md transition-all cursor-pointer group`}>
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center mb-4 shadow-sm`}>
+                      <Icon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className={`text-xl font-bold ${s.text}`}>{s.label}</h3>
+                      <span className={`text-sm font-medium ${s.text} opacity-70`}>{s.chapters} chapters</span>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-4">{s.desc}</p>
+                    <div className={`flex items-center gap-1 text-sm font-medium ${s.text} group-hover:gap-2 transition-all`}>
+                      Explore chapters <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="py-24 bg-gradient-to-br from-indigo-600 to-blue-700 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <h2 className="text-4xl font-bold mb-4">How the Multi-Tenant System Works</h2>
+            <p className="text-indigo-200 text-lg max-w-2xl mx-auto">A single platform that serves every stakeholder in an educational institute.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { step: "01", icon: Building2, title: "Institute Onboards", desc: "Super Admin creates an institute. Institute Admin configures classes, subjects, and teacher mappings." },
+              { step: "02", icon: Users, title: "Users Are Invited", desc: "Institute Admin sends invite links to teachers, students, and parents. Each accepts and gets their role." },
+              { step: "03", icon: BookOpen, title: "Learning Begins", desc: "Students access narrations, past papers, and assessments. Teachers schedule live classes and assignments." },
+              { step: "04", icon: BarChart3, title: "Analytics & Reports", desc: "Parents track attendance and report cards. Admins monitor fees, alerts, and overall institute performance." },
+            ].map(s => {
+              const Icon = s.icon;
+              return (
+                <div key={s.step} className="bg-white/10 backdrop-blur rounded-2xl p-6 border border-white/20">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-indigo-300 font-mono text-sm font-bold">{s.step}</span>
+                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                  </div>
+                  <h3 className="font-bold text-white mb-2">{s.title}</h3>
+                  <p className="text-indigo-200 text-sm leading-relaxed">{s.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-24 bg-white">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-200">
+            <GraduationCap className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">Ready to Get Started?</h2>
+          <p className="text-lg text-gray-500 mb-8">Sign in with your Manus account. Your role is automatically detected and you'll be taken straight to your portal.</p>
+          <div className="flex flex-wrap gap-4 justify-center mb-6">
+            <Button size="lg" onClick={() => window.location.href = getLoginUrl()} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white h-12 px-8 text-base font-semibold shadow-lg shadow-indigo-200">
+              <GraduationCap className="w-5 h-5" />Sign In with Manus<ArrowRight className="w-4 h-4" />
+            </Button>
+            <Link href="/search">
+              <Button size="lg" variant="outline" className="gap-2 h-12 px-8 text-base border-gray-300">
+                <BookOpen className="w-5 h-5" />Browse Content
+              </Button>
+            </Link>
+          </div>
+          <div className="flex flex-wrap gap-4 justify-center">
+            {["Secure OAuth 2.0", "No password needed", "Role auto-detected", "Free to start"].map(t => (
+              <div key={t} className="flex items-center gap-1.5 text-sm text-gray-400">
+                <CheckCircle className="w-3.5 h-3.5 text-green-500" />{t}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-100 py-10 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center">
+              <GraduationCap className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-gray-700">ExamForge AI</span>
+          </div>
+          <div className="flex gap-6 text-sm text-gray-400">
+            <Link href="/search" className="hover:text-gray-600 transition-colors">Search</Link>
+            <Link href="/api-docs" className="hover:text-gray-600 transition-colors">API Docs</Link>
+            <Link href="/onboard" className="hover:text-gray-600 transition-colors">Onboarding</Link>
+          </div>
+          <p className="text-sm text-gray-400">© 2025 ExamForge AI. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 }

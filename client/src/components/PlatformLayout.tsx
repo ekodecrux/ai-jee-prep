@@ -135,6 +135,7 @@ const STUDENT_MENU: MenuItem[] = [
   { id: "performance", label: "Performance", icon: BarChart3, path: "/performance" },
   { id: "study-plan", label: "Study Plan", icon: Map, path: "/study-plan" },
   { id: "bridge-courses", label: "Bridge Courses", icon: Brain, path: "/dashboard?tab=bridge" },
+  { id: "report-card", label: "Report Card", icon: GraduationCap, path: "/dashboard?tab=report-card" },
 ];
 
 const PARENT_MENU: MenuItem[] = [
@@ -377,6 +378,10 @@ export default function PlatformLayout({ children, activeTab: externalTab, onTab
   });
   const [location] = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
+  const { data: membership, isLoading: membershipLoading } = trpc.erp.getMyMembership.useQuery(
+    undefined,
+    { enabled: isAuthenticated, retry: false }
+  );
 
   const activeTab = externalTab ?? internalTab;
   const setActiveTab = (tab: string) => {
@@ -384,7 +389,9 @@ export default function PlatformLayout({ children, activeTab: externalTab, onTab
     onTabChange?.(tab);
   };
 
-  const userRole = (user as any)?.role || "student";
+  // Derive role from ERP membership (not users.role which only has user/admin)
+  const erpRole = membership?.role ?? "student";
+  const userRole = erpRole;
   const roleConfig = ROLE_CONFIG[userRole] || ROLE_CONFIG.student;
 
   const toggleGroup = (id: string) => {
@@ -404,6 +411,19 @@ export default function PlatformLayout({ children, activeTab: externalTab, onTab
           >
             Sign In
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show skeleton while determining ERP role
+  if (membershipLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gray-200 animate-pulse" />
+          <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="h-2 w-24 bg-gray-100 rounded animate-pulse" />
         </div>
       </div>
     );

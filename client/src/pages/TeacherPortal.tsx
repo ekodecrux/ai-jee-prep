@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -40,7 +41,9 @@ function todayStr() {
 
 export default function TeacherPortal() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [_loc] = useLocation();
+  const _tsp = new URLSearchParams(_loc.split("?")[1] || "");
+  const [activeTab, setActiveTab] = useState(_tsp.get("tab") || "overview");
 
   // ─── Attendance state ────────────────────────────────────────────────────
   const [attInstituteId, setAttInstituteId] = useState<number | null>(null);
@@ -283,6 +286,11 @@ export default function TeacherPortal() {
             <TabsTrigger value="doubts">Doubt Board</TabsTrigger>
             <TabsTrigger value="assessments">Assessments</TabsTrigger>
             <TabsTrigger value="approvals">Bridge Approvals</TabsTrigger>
+            <TabsTrigger value="assignments">Assignments</TabsTrigger>
+            <TabsTrigger value="live-classes">Live Classes</TabsTrigger>
+            <TabsTrigger value="tests">Tests</TabsTrigger>
+            <TabsTrigger value="bridge">Bridge Courses</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
 
           {/* ─── Schedule ─────────────────────────────────────────────────── */}
@@ -859,6 +867,11 @@ export default function TeacherPortal() {
             </div>
           </TabsContent>
 
+          {/* ─── Assignments ──────────────────────────────────────────────── */}
+          <TabsContent value="assignments" className="space-y-6">
+            <TeacherAssignmentsTab />
+          </TabsContent>
+
           {/* ─── Bridge Course Approvals ──────────────────────────────────── */}
           <TabsContent value="approvals" className="space-y-6">
             {myInstituteId ? (
@@ -869,6 +882,89 @@ export default function TeacherPortal() {
                 <p>No institute context found. Please ensure you are assigned to an institute.</p>
               </div>
             )}
+          </TabsContent>
+
+          {/* Live Classes */}
+          <TabsContent value="live-classes" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Live Classes</h2>
+              <Button size="sm" className="gap-2 bg-teal-600 hover:bg-teal-700 text-white" onClick={() => setShowCreateClass(true)}>
+                <Plus className="w-4 h-4" /> Schedule Class
+              </Button>
+            </div>
+            {upcomingClasses && upcomingClasses.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingClasses.map((cls: any) => (
+                  <div key={cls.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-gray-900">{cls.title}</div>
+                      <div className="text-sm text-gray-500">{new Date(cls.scheduledAt).toLocaleString()} · {cls.durationMinutes} min</div>
+                      <div className="text-xs text-teal-600 mt-1">{cls.type?.replace("_", " ")}</div>
+                    </div>
+                    {cls.meetingUrl && (
+                      <a href={cls.meetingUrl} target="_blank" rel="noreferrer">
+                        <Button size="sm" variant="outline" className="gap-1"><Video className="w-3.5 h-3.5" /> Join</Button>
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <Video className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No upcoming classes</p>
+                <p className="text-sm mt-1">Schedule a live class to get started</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Tests */}
+          <TabsContent value="tests" className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">Tests &amp; Exams</h2>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-blue-700 font-medium mb-1">
+                <ClipboardList className="w-4 h-4" /> Proctored Tests
+              </div>
+              <p className="text-sm text-blue-600">You can schedule online tests via the Schedule tab. Students will take them in proctored mode. View results in the Proctoring tab.</p>
+            </div>
+            <div className="text-center py-10 text-muted-foreground">
+              <ClipboardList className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No tests scheduled yet</p>
+            </div>
+          </TabsContent>
+
+          {/* Bridge Courses */}
+          <TabsContent value="bridge" className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">Bridge Course Approvals</h2>
+            {myInstituteId ? (
+              <BridgeApprovalTab instituteId={myInstituteId} />
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <AlertCircle className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p>No institute context found.</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Reports */}
+          <TabsContent value="reports" className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">Class Reports</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { label: "Total Students", value: roster?.total || 0, color: "text-blue-600", bg: "bg-blue-50" },
+                { label: "Classes Scheduled", value: upcomingClasses?.length || 0, color: "text-teal-600", bg: "bg-teal-50" },
+                { label: "Lesson Plans", value: lessonPlans?.length || 0, color: "text-purple-600", bg: "bg-purple-50" },
+              ].map(s => (
+                <div key={s.label} className={`${s.bg} rounded-xl p-4 border border-opacity-20`}>
+                  <div className={`text-3xl font-bold ${s.color}`}>{s.value}</div>
+                  <div className="text-sm text-gray-500 mt-1">{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h3 className="font-semibold text-gray-800 mb-3">Attendance Summary</h3>
+              <p className="text-sm text-gray-500">Select a class and date in the Attendance tab to view and save attendance records. Summary reports will be available here.</p>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
@@ -1010,6 +1106,280 @@ function BridgeApprovalTab({ instituteId }: { instituteId: number }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Teacher Assignments Tab ──────────────────────────────────────────────────
+function TeacherAssignmentsTab() {
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [gradeOpen, setGradeOpen] = useState(false);
+  const [gradingSubmission, setGradingSubmission] = useState<{ id: number; studentName: string | null; maxMarks: number } | null>(null);
+
+  // Form state
+  const [form, setForm] = useState({ classId: "", subjectId: "", title: "", description: "", dueDate: "", maxMarks: "100" });
+  const [gradeForm, setGradeForm] = useState({ grade: "", feedback: "" });
+
+  const { data: myClasses } = trpc.assignments.getMyClasses.useQuery();
+  const { data: assignments, refetch: refetchAssignments } = trpc.assignments.listForTeacher.useQuery({});
+  const { data: submissionsData, refetch: refetchSubs } = trpc.assignments.listSubmissions.useQuery(
+    { assignmentId: selectedAssignmentId! },
+    { enabled: selectedAssignmentId !== null }
+  );
+
+  const createMut = trpc.assignments.create.useMutation({
+    onSuccess: () => { toast.success("Assignment created"); setCreateOpen(false); refetchAssignments(); setForm({ classId: "", subjectId: "", title: "", description: "", dueDate: "", maxMarks: "100" }); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const gradeMut = trpc.assignments.grade.useMutation({
+    onSuccess: () => { toast.success("Submission graded"); setGradeOpen(false); refetchSubs(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  // Unique classes from teacher's class-subject mappings
+  const uniqueClasses = myClasses
+    ? Array.from(new Map(myClasses.map(c => [c.classId, c])).values())
+    : [];
+
+  const subjectsForClass = myClasses?.filter(c => String(c.classId) === form.classId) ?? [];
+
+  const selectedAssignment = assignments?.find(a => a.id === selectedAssignmentId);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">Assignments</h2>
+          <p className="text-sm text-muted-foreground">Create and grade homework assignments for your classes</p>
+        </div>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2"><Plus className="w-4 h-4" />New Assignment</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader><DialogTitle>Create Assignment</DialogTitle></DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Class</Label>
+                  <Select value={form.classId} onValueChange={v => setForm(f => ({ ...f, classId: v, subjectId: "" }))}>
+                    <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                    <SelectContent>
+                      {uniqueClasses.map(c => (
+                        <SelectItem key={c.classId} value={String(c.classId)}>{c.className ?? `Class ${c.classId}`}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Subject</Label>
+                  <Select value={form.subjectId} onValueChange={v => setForm(f => ({ ...f, subjectId: v }))} disabled={!form.classId}>
+                    <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+                    <SelectContent>
+                      {subjectsForClass.map(s => (
+                        <SelectItem key={s.subjectId} value={String(s.subjectId)}>{s.subjectName ?? `Subject ${s.subjectId}`}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>Title</Label>
+                <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Newton's Laws Problem Set" />
+              </div>
+              <div>
+                <Label>Description (optional)</Label>
+                <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Instructions, resources, etc." rows={3} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Due Date</Label>
+                  <Input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Max Marks</Label>
+                  <Input type="number" value={form.maxMarks} onChange={e => setForm(f => ({ ...f, maxMarks: e.target.value }))} min={1} max={1000} />
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                disabled={!form.classId || !form.subjectId || !form.title || !form.dueDate || createMut.isPending}
+                onClick={() => createMut.mutate({
+                  classId: Number(form.classId),
+                  subjectId: Number(form.subjectId),
+                  title: form.title,
+                  description: form.description || undefined,
+                  dueDate: form.dueDate,
+                  maxMarks: Number(form.maxMarks),
+                })}
+              >
+                {createMut.isPending ? "Creating..." : "Create Assignment"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Assignment List */}
+        <div className="lg:col-span-1 space-y-3">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">My Assignments ({assignments?.length ?? 0})</h3>
+          {!assignments || assignments.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground border rounded-lg">
+              <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No assignments yet. Create your first one!</p>
+            </div>
+          ) : (
+            assignments.map(a => {
+              const isOverdue = a.dueDate && new Date(a.dueDate) < new Date();
+              return (
+                <Card
+                  key={a.id}
+                  className={`cursor-pointer transition-all hover:shadow-md ${selectedAssignmentId === a.id ? "ring-2 ring-primary" : ""}`}
+                  onClick={() => setSelectedAssignmentId(a.id)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{a.title}</p>
+                        <p className="text-xs text-muted-foreground">{a.className} · {a.subjectName}</p>
+                        <p className={`text-xs mt-1 ${isOverdue ? "text-red-500" : "text-muted-foreground"}`}>
+                          Due: {a.dueDate ?? "—"}
+                        </p>
+                      </div>
+                      <Badge variant={a.isActive ? "default" : "secondary"} className="text-xs shrink-0">
+                        {a.isActive ? "Active" : "Closed"}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+
+        {/* Submissions Panel */}
+        <div className="lg:col-span-2">
+          {!selectedAssignmentId ? (
+            <div className="flex items-center justify-center h-64 border rounded-lg text-muted-foreground">
+              <div className="text-center">
+                <ClipboardList className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Select an assignment to view submissions</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold">{selectedAssignment?.title}</h3>
+                  <p className="text-sm text-muted-foreground">Max marks: {selectedAssignment?.maxMarks} · Due: {selectedAssignment?.dueDate}</p>
+                </div>
+                <Badge variant="outline">{submissionsData?.submissions.length ?? 0} submissions</Badge>
+              </div>
+
+              {!submissionsData || submissionsData.submissions.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground border rounded-lg">
+                  <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No submissions yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {submissionsData.submissions.map(sub => (
+                    <Card key={sub.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm">{sub.studentName ?? `Student #${sub.studentId}`}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Submitted: {sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : "—"}
+                            </p>
+                            {sub.textContent && (
+                              <p className="text-sm mt-2 text-foreground/80 line-clamp-2">{sub.textContent}</p>
+                            )}
+                            {sub.fileUrl && (
+                              <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline mt-1 flex items-center gap-1">
+                                <ExternalLink className="w-3 h-3" />View attachment
+                              </a>
+                            )}
+                            {sub.feedback && (
+                              <p className="text-xs text-blue-700 mt-1 bg-blue-50 px-2 py-1 rounded">Feedback: {sub.feedback}</p>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0">
+                            {sub.grade !== null ? (
+                              <div>
+                                <span className="text-lg font-bold text-green-600">{sub.grade}</span>
+                                <span className="text-xs text-muted-foreground">/{selectedAssignment?.maxMarks}</span>
+                                <p className="text-xs text-muted-foreground">Graded</p>
+                              </div>
+                            ) : (
+                              <Badge variant="outline" className="text-amber-600 border-amber-300">Ungraded</Badge>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="mt-2 text-xs"
+                              onClick={() => {
+                                setGradingSubmission({ id: sub.id, studentName: sub.studentName, maxMarks: selectedAssignment?.maxMarks ?? 100 });
+                                setGradeForm({ grade: sub.grade !== null ? String(sub.grade) : "", feedback: sub.feedback ?? "" });
+                                setGradeOpen(true);
+                              }}
+                            >
+                              {sub.grade !== null ? "Re-grade" : "Grade"}
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Grade Dialog */}
+      <Dialog open={gradeOpen} onOpenChange={setGradeOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Grade Submission — {gradingSubmission?.studentName}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Grade (out of {gradingSubmission?.maxMarks})</Label>
+              <Input
+                type="number"
+                value={gradeForm.grade}
+                onChange={e => setGradeForm(f => ({ ...f, grade: e.target.value }))}
+                min={0}
+                max={gradingSubmission?.maxMarks}
+                placeholder="Enter marks"
+              />
+            </div>
+            <div>
+              <Label>Feedback (optional)</Label>
+              <Textarea
+                value={gradeForm.feedback}
+                onChange={e => setGradeForm(f => ({ ...f, feedback: e.target.value }))}
+                placeholder="Write feedback for the student..."
+                rows={3}
+              />
+            </div>
+            <Button
+              className="w-full"
+              disabled={!gradeForm.grade || gradeMut.isPending}
+              onClick={() => gradingSubmission && gradeMut.mutate({
+                submissionId: gradingSubmission.id,
+                grade: Number(gradeForm.grade),
+                feedback: gradeForm.feedback || undefined,
+              })}
+            >
+              {gradeMut.isPending ? "Saving..." : "Save Grade"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
