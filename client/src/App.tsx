@@ -67,6 +67,11 @@ function GuestGuard({ children }: { children: React.ReactNode }) {
     return <Redirect to={dest} />;
   }
 
+  // Authenticated but no membership → send to onboarding wizard
+  if (isAuthenticated && !membershipLoading && !membership) {
+    return <Redirect to="/onboard" />;
+  }
+
   return <>{children}</>;
 }
 
@@ -95,6 +100,11 @@ function RoleGuard({
         </div>
       </div>
     );
+  }
+
+  // Authenticated but no membership → send to onboarding wizard
+  if (!membershipLoading && !membership) {
+    return <Redirect to="/onboard" />;
   }
 
   const role = membership?.role ?? "student";

@@ -25,7 +25,7 @@ import {
   Trophy, Map, Search, Code2, Activity, Target, TrendingUp,
   ClipboardCheck, Briefcase, AlertCircle, BookMarked, Brain,
   PieChart, Building2, UserPlus, Layers, Award, FileCheck,
-  MessageSquare, Zap, Star, Clock, ChevronLeft
+  MessageSquare, Zap, Star, Clock, ChevronLeft, CreditCard
 } from "lucide-react";
 
 // ─── Role-specific menu configurations ────────────────────────────────────────
@@ -147,6 +147,7 @@ const PARENT_MENU: MenuItem[] = [
   { id: "assessments", label: "Assessments", icon: FileCheck, path: "/parent?tab=assessments" },
   { id: "live-classes", label: "Live Classes", icon: Video, path: "/parent?tab=live-classes" },
   { id: "progress", label: "Progress & Analytics", icon: BarChart3, path: "/parent?tab=progress" },
+  { id: "fees", label: "Fee Payments", icon: CreditCard, path: "/parent?tab=fees" },
   { id: "alerts", label: "Alerts", icon: AlertCircle, path: "/parent?tab=alerts" },
 ];
 
@@ -388,6 +389,14 @@ export default function PlatformLayout({ children, activeTab: externalTab, onTab
     setInternalTab(tab);
     onTabChange?.(tab);
   };
+
+  // Redirect to onboarding if authenticated but has no ERP membership
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    if (isAuthenticated && !membershipLoading && !membership) {
+      navigate("/onboard");
+    }
+  }, [isAuthenticated, membershipLoading, membership]);
 
   // Derive role from ERP membership (not users.role which only has user/admin)
   const erpRole = membership?.role ?? "student";

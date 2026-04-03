@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import LiveClassesTab from "@/components/LiveClassesTab";
 
 // ─── Attendance status helpers ────────────────────────────────────────────────
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
@@ -884,36 +885,14 @@ export default function TeacherPortal() {
             )}
           </TabsContent>
 
-          {/* Live Classes */}
+          {/* Live Classes — Jitsi powered */}
           <TabsContent value="live-classes" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Live Classes</h2>
-              <Button size="sm" className="gap-2 bg-teal-600 hover:bg-teal-700 text-white" onClick={() => setShowCreateClass(true)}>
-                <Plus className="w-4 h-4" /> Schedule Class
-              </Button>
-            </div>
-            {upcomingClasses && upcomingClasses.length > 0 ? (
-              <div className="space-y-3">
-                {upcomingClasses.map((cls: any) => (
-                  <div key={cls.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-gray-900">{cls.title}</div>
-                      <div className="text-sm text-gray-500">{new Date(cls.scheduledAt).toLocaleString()} · {cls.durationMinutes} min</div>
-                      <div className="text-xs text-teal-600 mt-1">{cls.type?.replace("_", " ")}</div>
-                    </div>
-                    {cls.meetingUrl && (
-                      <a href={cls.meetingUrl} target="_blank" rel="noreferrer">
-                        <Button size="sm" variant="outline" className="gap-1"><Video className="w-3.5 h-3.5" /> Join</Button>
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
+            {myInstituteId ? (
+              <LiveClassesTab role="teacher" instituteId={myInstituteId} />
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 <Video className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No upcoming classes</p>
-                <p className="text-sm mt-1">Schedule a live class to get started</p>
+                <p className="text-sm">Loading institute info...</p>
               </div>
             )}
           </TabsContent>

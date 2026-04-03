@@ -15,6 +15,7 @@ import { erpRouter, onlineClassesRouter, lessonPlansErpRouter, bridgeCoursesRout
 import { reportCardRouter } from "./routers/reportCard";
 import { assignmentsRouter } from "./routers/assignments";
 import { feesRouter } from "./routers/fees";
+import { feePaymentsRouter } from "./routers/feePayments";
 
 export const appRouter = router({
   system: systemRouter,
@@ -45,6 +46,7 @@ export const appRouter = router({
   reportCard: reportCardRouter,
   assignments: assignmentsRouter,
   fees: feesRouter,
+  feePayments: feePaymentsRouter,
 });
 
 export type AppRouter = typeof appRouter;

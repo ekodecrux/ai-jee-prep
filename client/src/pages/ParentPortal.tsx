@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import ReportCard from "@/components/ReportCard";
+import { CreditCard, CheckCircle, XCircle, Clock as ClockIcon } from "lucide-react";
 import PlatformLayout from "@/components/PlatformLayout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -85,6 +86,7 @@ export default function ParentPortal() {
             <TabsTrigger value="attendance">Attendance</TabsTrigger>
             <TabsTrigger value="assignments">Assignments</TabsTrigger>
             <TabsTrigger value="progress">Progress</TabsTrigger>
+            <TabsTrigger value="fees">Fee Payments</TabsTrigger>
             <TabsTrigger value="alerts">Alerts</TabsTrigger>
           </TabsList>
 
@@ -475,8 +477,152 @@ export default function ParentPortal() {
               ) : null}
             </div>
           </TabsContent>
+
+          {/* Fee Payments — Stripe powered */}
+          <TabsContent value="fees" className="space-y-6">
+            <ParentFeesTab />
+          </TabsContent>
         </Tabs>
       </div>
     </PlatformLayout>
+  );
+}
+
+// ─── Parent Fees Tab — Stripe Checkout ───────────────────────────────────────────────
+function ParentFeesTab() {
+  const { isAuthenticated } = useAuth();
+  const [payingId, setPayingId] = useState<number | null>(null);
+
+  // Get parent's linked children via erp
+  const { data: parentDash } = trpc.erp.getParentDashboard.useQuery(undefined, { enabled: isAuthenticated });
+  const children = (parentDash as any)?.children || [];
+  const firstChild = children[0];
+  const childStudentId = firstChild?.id ?? null; // institute_members.id
+
+  // Fetch fee records for the child
+  const { data: feeList, isLoading } = trpc.feePayments.getMyChildFees.useQuery(
+    { studentId: childStudentId! },
+    { enabled: !!childStudentId }
+  );
+
+  const createCheckout = trpc.feePayments.createCheckoutSession.useMutation({
+    onSuccess: (data) => {
+      if (data.checkoutUrl) {
+        window.open(data.checkoutUrl, "_blank");
+        toast.success("Redirecting to secure payment page...");
+      }
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to initiate payment");
+    },
+    onSettled: () => setPayingId(null),
+  });
+
+  const handlePay = (feeRecordId: number) => {
+    setPayingId(feeRecordId);
+    createCheckout.mutate({ feeRecordId, origin: window.location.origin });
+  };
+
+  const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+    paid:    { label: "Paid",    color: "text-green-700 bg-green-50 border-green-200",  icon: CheckCircle },
+    pending: { label: "Pending", color: "text-amber-700 bg-amber-50 border-amber-200",  icon: ClockIcon },
+    overdue: { label: "Overdue", color: "text-red-700 bg-red-50 border-red-200",        icon: XCircle },
+    waived:  { label: "Waived",  color: "text-gray-500 bg-gray-50 border-gray-200",     icon: CheckCircle },
+  };
+
+  if (!childStudentId) return (
+    <div className="text-center py-20 text-gray-400">
+      <CreditCard className="w-14 h-14 mx-auto mb-4 opacity-20" />
+      <p className="font-semibold text-gray-600 text-lg">No child linked</p>
+      <p className="text-sm mt-2">Your account is not yet linked to a student. Contact your institute admin.</p>
+    </div>
+  );
+
+  if (isLoading) return (
+    <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+  );
+
+  const totalDue = (feeList || []).filter((f: any) => f.status === "pending" || f.status === "overdue").reduce((s: number, f: any) => s + f.amount, 0);
+  const totalPaid = (feeList || []).filter((f: any) => f.status === "paid").reduce((s: number, f: any) => s + f.amount, 0);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Fee Payments</h2>
+        <p className="text-sm text-gray-500 mt-1">Pay your child's institute fees securely via Stripe</p>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-5">
+            <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Amount Due</p>
+            <p className="text-3xl font-bold text-amber-700 mt-1">₹{totalDue.toLocaleString("en-IN")}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="p-5">
+            <p className="text-xs text-green-600 font-medium uppercase tracking-wide">Total Paid</p>
+            <p className="text-3xl font-bold text-green-700 mt-1">₹{totalPaid.toLocaleString("en-IN")}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Fee records list */}
+      {!feeList || feeList.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">
+          <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-20" />
+          <p className="font-medium text-gray-600">No fee records found</p>
+          <p className="text-sm mt-1">Your institute admin will add fee records here</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {feeList.map((fee: any) => {
+            const cfg = statusConfig[fee.status] || statusConfig.pending;
+            const StatusIcon = cfg.icon;
+            const isPaying = payingId === fee.id;
+            const canPay = fee.status === "pending" || fee.status === "overdue";
+            return (
+              <Card key={fee.id} className="border-gray-200 shadow-sm">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${cfg.color}`}>
+                          <StatusIcon className="w-3 h-3" />
+                          {cfg.label}
+                        </span>
+                        <span className="text-xs text-gray-400 capitalize">{fee.feeType.replace(/_/g, " ")}</span>
+                      </div>
+                      <p className="font-semibold text-gray-900">{fee.description || `${fee.feeType.replace(/_/g, " ")} Fee`}</p>
+                      <p className="text-sm text-gray-500 mt-0.5">Due: {new Date(fee.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xl font-bold text-gray-900">₹{fee.amount.toLocaleString("en-IN")}</p>
+                      {canPay && (
+                        <Button
+                          size="sm"
+                          className="mt-2 gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+                          onClick={() => handlePay(fee.id)}
+                          disabled={isPaying || createCheckout.isPending}
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          {isPaying ? "Opening..." : "Pay Now"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  {fee.notes && <p className="text-xs text-gray-400 mt-2 border-t pt-2">{fee.notes}</p>}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <p className="text-xs text-gray-400 text-center">
+        Payments are processed securely via Stripe. Use card <strong>4242 4242 4242 4242</strong> for testing.
+      </p>
+    </div>
   );
 }

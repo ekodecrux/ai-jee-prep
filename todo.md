@@ -705,3 +705,18 @@
 - [x] No cross-role tab leakage — each portal only shows its own tabs
 - [x] Role guard on all portal routes — wrong role gets redirected to own portal
 - [x] Onboarding flow: new user without role gets directed to onboarding wizard
+
+## Phase 24: Onboarding Wizard, Live Classes, Stripe Payments
+
+- [x] Onboarding wizard page: role-selection (Student/Teacher/Parent/Institute Admin) for users with no ERP membership
+- [x] Onboarding: "Join Institute" flow — enter invite code or search institute name
+- [x] Onboarding: "Create Institute" flow — for Institute Admin role
+- [x] PlatformLayout: detect no-membership state and redirect to onboarding wizard
+- [x] Live class: Teacher can create a live class session (title, class, subject, scheduled time)
+- [x] Live class: Jitsi Meet embedded iframe in Teacher portal for starting session
+- [x] Live class: Student portal shows upcoming live classes with "Join" button
+- [x] Live class: Jitsi room name derived from session ID for security
+- [x] Stripe: webdev_add_feature stripe integration
+- [x] Stripe: Parent can pay pending fees from their portal
+- [x] Stripe: Payment success webhook updates fee_records status to "paid"
+- [x] Stripe: Institute Admin Fees tab shows real-time payment status

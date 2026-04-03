@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import ReportCard from "@/components/ReportCard";
+import LiveClassesTabComponent from "@/components/LiveClassesTab";
 import { Link, useLocation } from "wouter";
 import PlatformLayout from "@/components/PlatformLayout";
 import { trpc } from "@/lib/trpc";
@@ -588,8 +589,25 @@ function PlaceholderTab({ icon: Icon, title, description }: { icon: any; title: 
   );
 }
 
-// ─── Live Classes Tab (Student) ───────────────────────────────────────────────
+// ─── Live Classes Tab (Student) — Jitsi powered ──────────────────────────────
 function LiveClassesTab() {
+  const { isAuthenticated } = useAuth();
+  const { data: myDash } = trpc.erp.getStudentDashboard.useQuery(undefined, { enabled: isAuthenticated });
+  const instituteId = (myDash as any)?.membership?.instituteId ?? null;
+  const classId = (myDash as any)?.enrollments?.[0]?.classId ?? null;
+
+  if (!instituteId) return (
+    <div className="text-center py-20 text-gray-400">
+      <Video className="w-14 h-14 mx-auto mb-4 opacity-20" />
+      <p className="font-semibold text-gray-600 text-lg">No institute linked</p>
+      <p className="text-sm mt-2">You'll see live classes here once your institute admin enrolls you in a class.</p>
+    </div>
+  );
+
+  return <LiveClassesTabComponent role="student" instituteId={instituteId} classId={classId ?? undefined} />;
+}
+
+function _OldLiveClassesTabUnused() {
   const { isAuthenticated } = useAuth();
   const { data: myDash } = trpc.erp.getStudentDashboard.useQuery(undefined, { enabled: isAuthenticated });
   const instituteId = (myDash as any)?.membership?.instituteId ?? null;
