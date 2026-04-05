@@ -24,6 +24,8 @@ import TeacherPortal from "./pages/TeacherPortal";
 import ParentPortal from "./pages/ParentPortal";
 import InstituteConfig from "./pages/InstituteConfig";
 import OnboardingWizard from "./pages/OnboardingWizard";
+import DemoPreview from "./pages/DemoPreview";
+import RegisterInstitute from "./pages/RegisterInstitute";
 
 // ─── Role → canonical portal path ────────────────────────────────────────────
 const ROLE_HOME: Record<string, string> = {
@@ -127,6 +129,8 @@ function Router() {
       <Route path="/search" component={SearchPage} />
       <Route path="/api-docs" component={ApiDocsPage} />
       <Route path="/onboard" component={OnboardingWizard} />
+      <Route path="/demo" component={DemoPreview} />
+      <Route path="/register-institute" component={RegisterInstitute} />
 
       {/* ── Landing page: redirect authenticated users to their portal ── */}
       <Route path="/">

@@ -157,6 +157,67 @@ export const erpRouter = router({
       };
     }),
 
+  // Self-register a new institute (any authenticated user without existing membership)
+  selfRegisterInstitute: protectedProcedure
+    .input(z.object({
+      name: z.string().min(2, "Institute name must be at least 2 characters"),
+      code: z.string().min(2).max(20, "Code must be 2-20 characters"),
+      contactEmail: z.string().email("Invalid email address"),
+      contactPhone: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      board: z.string().optional(),
+      website: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Check if user already has a membership
+      const existing = await db.select().from(instituteMembers)
+        .where(and(eq(instituteMembers.userId, ctx.user.id), eq(instituteMembers.isActive, true)))
+        .limit(1);
+      if (existing.length > 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "You are already a member of an institute" });
+      }
+
+      const safeCode = input.code.toUpperCase().replace(/[^A-Z0-9_]/g, "_");
+      const instituteCode = `INST_${safeCode}_${Date.now()}`;
+      const [result] = await db.insert(institutes).values({
+        instituteId: instituteCode,
+        name: input.name,
+        code: safeCode,
+        contactEmail: input.contactEmail,
+        contactPhone: input.contactPhone || null,
+        city: input.city || null,
+        state: input.state || null,
+        website: input.website || null,
+        subscriptionPlan: "trial",
+        maxStudents: 100,
+        maxTeachers: 10,
+        onboardedBy: ctx.user.id,
+        isActive: true,
+        isVerified: false, // pending super admin verification
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      const newInstituteId = (result as any).insertId as number;
+
+      // Create institute_admin membership for the registering user
+      await db.insert(instituteMembers).values({
+        userId: ctx.user.id,
+        instituteId: newInstituteId,
+        role: "institute_admin",
+        isActive: true,
+        joinedAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await logAudit(db, { userId: ctx.user.id, action: "institute.self_register", targetType: "institute", targetId: String(newInstituteId), details: { name: input.name } });
+
+      return { success: true, instituteId: newInstituteId, code: instituteCode };
+    }),
+
   // Create institute (super admin)
   createInstitute: superAdminProcedure
     .input(z.object({

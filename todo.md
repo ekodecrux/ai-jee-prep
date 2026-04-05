@@ -730,3 +730,17 @@
 - [x] Home.tsx "Get Started" / "Sign In" CTA links to /login
 - [x] /login redirects already-authenticated users to their portal
 - [x] Polished design: dark academic theme, gradient background, animated cards
+
+## Phase 26: Login Page UX Improvements
+
+- [x] Demo/Preview mode: read-only portal previews per role (no login required)
+- [x] Demo mode: Student preview shows mock dashboard, subjects, study plan, performance
+- [x] Demo mode: Teacher preview shows mock classes, lesson plans, assignments
+- [x] Demo mode: Parent preview shows mock child overview, attendance, report card
+- [x] Demo mode: Institute Admin preview shows mock overview, users, fees
+- [x] Demo mode: Super Admin preview shows mock platform stats, institutes
+- [x] Institute self-registration form at /register-institute (name, board, city, contact)
+- [x] Self-registration: creates institute + assigns Institute Admin role to the registering user
+- [x] Login page: "Create your institute" CTA button linking to /register-institute
+- [x] Mobile-optimised login: horizontal swipe carousel for role cards on small screens
+- [x] Mobile carousel: touch/swipe gestures, dot indicators, smooth transitions

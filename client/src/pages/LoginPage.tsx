@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useLocation, Link } from "wouter";
 import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import {
   GraduationCap, UserCheck, Heart, Building2, Shield,
   ArrowRight, CheckCircle, Sparkles, BookOpen, Target,
-  Zap, BarChart3, Users, Lock, ChevronRight
+  Zap, BarChart3, Users, Lock, ChevronRight, ChevronLeft,
+  Plus,
 } from "lucide-react";
 
 const ROLES = [
@@ -84,37 +86,66 @@ const STATS = [
 
 export default function LoginPage() {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [, navigate] = useLocation();
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   const handleLogin = () => {
     window.location.href = getLoginUrl();
   };
 
+  const handleDemo = (roleId: string) => {
+    navigate(`/demo?role=${roleId}`);
+  };
+
   const selected = ROLES.find(r => r.id === selectedRole);
+
+  const scrollCarousel = (dir: "left" | "right") => {
+    const next = dir === "right"
+      ? Math.min(carouselIndex + 1, ROLES.length - 1)
+      : Math.max(carouselIndex - 1, 0);
+    setCarouselIndex(next);
+    if (carouselRef.current) {
+      const card = carouselRef.current.children[next] as HTMLElement;
+      card?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-950 text-white overflow-x-hidden">
       {/* Top nav bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-gray-950/80 backdrop-blur-md border-b border-white/5">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 py-4 bg-gray-950/80 backdrop-blur-md border-b border-white/5">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-            <GraduationCap className="w-4.5 h-4.5 text-white" />
+            <GraduationCap className="w-4 h-4 text-white" />
           </div>
           <div>
             <span className="font-bold text-white text-sm leading-none">ExamForge AI</span>
-            <span className="block text-white/40 text-[10px] leading-none mt-0.5">Universal Knowledge Platform</span>
+            <span className="hidden sm:block text-white/40 text-[10px] leading-none mt-0.5">Universal Knowledge Platform</span>
           </div>
         </div>
-        <Button
-          size="sm"
-          onClick={handleLogin}
-          className="gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white border-0 text-xs h-8 px-4"
-        >
-          Sign In <ArrowRight className="w-3 h-3" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/register-institute">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="gap-1.5 text-gray-400 hover:text-white text-xs h-8 px-3 hidden sm:flex"
+            >
+              <Plus className="w-3 h-3" /> Register Institute
+            </Button>
+          </Link>
+          <Button
+            size="sm"
+            onClick={handleLogin}
+            className="gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white border-0 text-xs h-8 px-4"
+          >
+            Sign In <ArrowRight className="w-3 h-3" />
+          </Button>
+        </div>
       </nav>
 
       {/* Hero section */}
-      <div className="pt-24 pb-16 px-6 text-center relative">
+      <div className="pt-24 pb-16 px-4 sm:px-6 text-center relative">
         {/* Ambient glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute top-20 left-1/4 w-[300px] h-[300px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
@@ -126,37 +157,49 @@ export default function LoginPage() {
             Multi-Tenant LMS Platform — JEE, NEET, GATE & More
           </div>
 
-          <h1 className="text-5xl md:text-6xl font-extrabold leading-tight mb-5 tracking-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight mb-5 tracking-tight">
             One Platform,{" "}
             <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
               Every Role
             </span>
           </h1>
-          <p className="text-gray-400 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10">
+          <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10">
             Students, Teachers, Parents, Institute Admins, and Super Admins — each with their own
             dedicated portal, real-time data, and AI-powered tools.
           </p>
 
           {/* Stats row */}
-          <div className="flex flex-wrap items-center justify-center gap-8 mb-12">
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 mb-12">
             {STATS.map(s => (
               <div key={s.label} className="text-center">
-                <div className="text-3xl font-bold text-white">{s.value}</div>
+                <div className="text-2xl sm:text-3xl font-bold text-white">{s.value}</div>
                 <div className="text-gray-500 text-xs mt-0.5">{s.label}</div>
               </div>
             ))}
           </div>
 
           {/* Main CTA */}
-          <Button
-            size="lg"
-            onClick={handleLogin}
-            className="gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white border-0 h-14 px-10 text-base font-semibold shadow-2xl shadow-indigo-900/50 rounded-xl"
-          >
-            <GraduationCap className="w-5 h-5" />
-            Sign In with Manus OAuth
-            <ArrowRight className="w-4 h-4" />
-          </Button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Button
+              size="lg"
+              onClick={handleLogin}
+              className="gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white border-0 h-14 px-8 sm:px-10 text-base font-semibold shadow-2xl shadow-indigo-900/50 rounded-xl w-full sm:w-auto"
+            >
+              <GraduationCap className="w-5 h-5" />
+              Sign In with Manus OAuth
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+            <Link href="/register-institute" className="w-full sm:w-auto">
+              <Button
+                size="lg"
+                variant="outline"
+                className="gap-2 border-white/15 text-gray-300 hover:bg-gray-800 hover:text-white h-14 px-8 text-base rounded-xl w-full"
+              >
+                <Building2 className="w-5 h-5" />
+                Register Your Institute
+              </Button>
+            </Link>
+          </div>
           <p className="text-gray-600 text-xs mt-3 flex items-center justify-center gap-1.5">
             <Lock className="w-3 h-3" /> Secure OAuth 2.0 · No password required · Free to start
           </p>
@@ -164,8 +207,8 @@ export default function LoginPage() {
       </div>
 
       {/* Role cards section */}
-      <div className="px-6 pb-20 max-w-7xl mx-auto">
-        <div className="text-center mb-10">
+      <div className="px-4 sm:px-6 pb-20 max-w-7xl mx-auto">
+        <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-white mb-2">Choose Your Role</h2>
           <p className="text-gray-500 text-sm">
             After signing in, you'll be automatically directed to your portal based on your assigned role.
@@ -173,8 +216,8 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Role grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
+        {/* Desktop grid (hidden on mobile) */}
+        <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
           {ROLES.map((r) => {
             const Icon = r.icon;
             const isSelected = selectedRole === r.id;
@@ -190,25 +233,18 @@ export default function LoginPage() {
                   }
                 `}
               >
-                {/* Icon */}
                 <div className={`
                   w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-all
                   ${isSelected ? "bg-white/20" : `bg-gradient-to-br ${r.gradient}`}
                 `}>
-                  <Icon className="w-5.5 h-5.5 text-white" />
+                  <Icon className="w-5 h-5 text-white" />
                 </div>
-
-                {/* Role name */}
                 <div className={`font-bold text-sm mb-1 ${isSelected ? "text-white" : "text-gray-100"}`}>
                   {r.role}
                 </div>
-
-                {/* Short desc */}
                 <p className={`text-xs leading-relaxed ${isSelected ? "text-white/80" : "text-gray-500"}`}>
                   {r.desc.split(",")[0]}.
                 </p>
-
-                {/* Arrow indicator */}
                 <ChevronRight className={`
                   absolute top-4 right-4 w-4 h-4 transition-all
                   ${isSelected ? "text-white/70 rotate-90" : "text-gray-700 group-hover:text-gray-400"}
@@ -218,9 +254,89 @@ export default function LoginPage() {
           })}
         </div>
 
-        {/* Expanded role detail */}
+        {/* Mobile carousel (visible only on mobile) */}
+        <div className="sm:hidden mb-6">
+          <div className="relative">
+            {/* Carousel track */}
+            <div
+              ref={carouselRef}
+              className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-none pb-2"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {ROLES.map((r, idx) => {
+                const Icon = r.icon;
+                const isSelected = selectedRole === r.id;
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => {
+                      setCarouselIndex(idx);
+                      setSelectedRole(isSelected ? null : r.id);
+                    }}
+                    className={`
+                      flex-shrink-0 w-[75vw] max-w-[280px] snap-center text-left rounded-2xl border p-5 transition-all duration-200 cursor-pointer
+                      ${isSelected
+                        ? `bg-gradient-to-br ${r.gradient} border-transparent shadow-2xl`
+                        : "bg-gray-900 border-white/8"
+                      }
+                    `}
+                  >
+                    <div className={`
+                      w-11 h-11 rounded-xl flex items-center justify-center mb-4
+                      ${isSelected ? "bg-white/20" : `bg-gradient-to-br ${r.gradient}`}
+                    `}>
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <div className={`font-bold text-sm mb-1 ${isSelected ? "text-white" : "text-gray-100"}`}>
+                      {r.role}
+                    </div>
+                    <p className={`text-xs leading-relaxed ${isSelected ? "text-white/80" : "text-gray-500"}`}>
+                      {r.desc.split(",")[0]}.
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Prev / Next arrows */}
+            <div className="flex items-center justify-between mt-3">
+              <button
+                onClick={() => scrollCarousel("left")}
+                disabled={carouselIndex === 0}
+                className="w-8 h-8 rounded-full bg-gray-800 border border-white/10 flex items-center justify-center disabled:opacity-30 transition-opacity"
+              >
+                <ChevronLeft className="w-4 h-4 text-gray-300" />
+              </button>
+
+              {/* Dot indicators */}
+              <div className="flex gap-1.5">
+                {ROLES.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setCarouselIndex(i);
+                      const card = carouselRef.current?.children[i] as HTMLElement;
+                      card?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+                    }}
+                    className={`w-1.5 h-1.5 rounded-full transition-all ${i === carouselIndex ? "bg-indigo-400 w-4" : "bg-gray-700"}`}
+                  />
+                ))}
+              </div>
+
+              <button
+                onClick={() => scrollCarousel("right")}
+                disabled={carouselIndex === ROLES.length - 1}
+                className="w-8 h-8 rounded-full bg-gray-800 border border-white/10 flex items-center justify-center disabled:opacity-30 transition-opacity"
+              >
+                <ChevronRight className="w-4 h-4 text-gray-300" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Expanded role detail panel */}
         {selected && (
-          <div className={`rounded-2xl border bg-gray-900 border-white/10 p-8 mb-8 transition-all`}>
+          <div className="rounded-2xl border bg-gray-900 border-white/10 p-6 sm:p-8 mb-8 transition-all">
             <div className="flex flex-col md:flex-row gap-8 items-start">
               {/* Left: role info */}
               <div className="flex-1">
@@ -235,14 +351,44 @@ export default function LoginPage() {
                     </span>
                   </div>
                 </div>
-                <p className="text-gray-400 text-sm leading-relaxed mb-6">{selected.desc}</p>
-                <Button
-                  onClick={handleLogin}
-                  className={`gap-2 bg-gradient-to-r ${selected.gradient} text-white border-0 hover:opacity-90`}
-                >
-                  Sign in as {selected.role}
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
+                <p className="text-gray-400 text-sm leading-relaxed mb-5">{selected.desc}</p>
+
+                {/* Special CTA for institute_admin */}
+                {selected.id === "institute_admin" && (
+                  <div className="mb-5 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <p className="text-amber-300 text-xs font-medium mb-2">
+                      🏫 New to ExamForge AI? Register your institute in 2 minutes.
+                    </p>
+                    <Link href="/register-institute">
+                      <Button
+                        size="sm"
+                        className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0 hover:opacity-90"
+                      >
+                        <Building2 className="w-3.5 h-3.5" />
+                        Create Your Institute
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    onClick={handleLogin}
+                    className={`gap-2 bg-gradient-to-r ${selected.gradient} text-white border-0 hover:opacity-90`}
+                  >
+                    Sign in as {selected.role}
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    onClick={() => handleDemo(selected.id)}
+                    variant="outline"
+                    className="gap-2 border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    Preview Demo
+                  </Button>
+                </div>
               </div>
 
               {/* Right: perks */}
@@ -250,7 +396,7 @@ export default function LoginPage() {
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">
                   What you get
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {selected.perks.map(perk => (
                     <div key={perk} className="flex items-center gap-2.5 bg-gray-800/60 rounded-xl px-3.5 py-2.5">
                       <CheckCircle className={`w-4 h-4 flex-shrink-0 bg-gradient-to-br ${selected.gradient} rounded-full text-white`} />
@@ -264,7 +410,7 @@ export default function LoginPage() {
         )}
 
         {/* How it works */}
-        <div className="rounded-2xl bg-gray-900 border border-white/8 p-8">
+        <div className="rounded-2xl bg-gray-900 border border-white/8 p-6 sm:p-8">
           <h3 className="text-lg font-bold text-white mb-6 text-center">How it works</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
@@ -279,7 +425,7 @@ export default function LoginPage() {
                 step: "2",
                 icon: Users,
                 title: "Get assigned a role",
-                desc: "Institute Admins create institutes and send invite links. Students, Teachers, and Parents join via invite codes.",
+                desc: "Institute Admins register their institute and send invite links. Students, Teachers, and Parents join via invite codes.",
                 gradient: "from-teal-500 to-emerald-600",
               },
               {
@@ -309,20 +455,32 @@ export default function LoginPage() {
       </div>
 
       {/* Bottom CTA strip */}
-      <div className="border-t border-white/5 bg-gray-900/50 px-6 py-10 text-center">
+      <div className="border-t border-white/5 bg-gray-900/50 px-4 sm:px-6 py-10 text-center">
         <p className="text-gray-400 text-sm mb-4">
           Ready to get started? Sign in now — new users are automatically registered on first login.
         </p>
-        <Button
-          size="lg"
-          onClick={handleLogin}
-          className="gap-3 bg-white text-gray-900 hover:bg-gray-100 border-0 h-12 px-8 text-sm font-bold rounded-xl"
-        >
-          <GraduationCap className="w-5 h-5" />
-          Sign In with Manus OAuth
-          <ArrowRight className="w-4 h-4" />
-        </Button>
-        <div className="flex flex-wrap items-center justify-center gap-6 mt-6 text-xs text-gray-600">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+          <Button
+            size="lg"
+            onClick={handleLogin}
+            className="gap-3 bg-white text-gray-900 hover:bg-gray-100 border-0 h-12 px-8 text-sm font-bold rounded-xl w-full sm:w-auto"
+          >
+            <GraduationCap className="w-5 h-5" />
+            Sign In with Manus OAuth
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+          <Link href="/register-institute" className="w-full sm:w-auto">
+            <Button
+              size="lg"
+              variant="outline"
+              className="gap-2 border-white/15 text-gray-300 hover:bg-gray-800 hover:text-white h-12 px-8 text-sm rounded-xl w-full"
+            >
+              <Building2 className="w-4 h-4" />
+              Register Your Institute
+            </Button>
+          </Link>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs text-gray-600">
           {["Secure OAuth 2.0", "No password needed", "Free to start", "All roles supported"].map(t => (
             <span key={t} className="flex items-center gap-1.5">
               <CheckCircle className="w-3.5 h-3.5 text-green-600" />
