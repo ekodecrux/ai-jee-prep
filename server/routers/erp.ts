@@ -22,7 +22,7 @@ import {
   inviteTokens, instituteSettings,
   onlineClasses, lessonPlans as lessonPlansTable, bridgeCourses, lowAttendanceAlerts,
 } from "../../drizzle/schema";
-import { sendInviteEmail } from "../email";
+import { sendInviteEmail, sendInstituteWelcomeWithInvitesEmail } from "../email";
 
 const superAdminProcedure = requireRole(["super_admin", "admin"]);
 const instituteAdminProcedure = requireRole(["super_admin", "admin", "institute_admin"]);
@@ -215,7 +215,35 @@ export const erpRouter = router({
 
       await logAudit(db, { userId: ctx.user.id, action: "institute.self_register", targetType: "institute", targetId: String(newInstituteId), details: { name: input.name } });
 
-      return { success: true, instituteId: newInstituteId, code: instituteCode };
+      // Generate invite tokens for teacher, student, parent roles
+      const roles: Array<"teacher" | "student" | "parent"> = ["teacher", "student", "parent"];
+      const inviteLinks: Array<{ role: string; url: string; token: string }> = [];
+      const origin = (ctx.req as any).headers?.origin || "https://jeemasterprep-f58cx8ks.manus.space";
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+      for (const role of roles) {
+        const token = crypto.randomUUID().replace(/-/g, "");
+        await db.insert(inviteTokens).values({
+          token,
+          email: input.contactEmail,
+          role,
+          instituteId: newInstituteId,
+          invitedBy: ctx.user.id,
+          expiresAt,
+          isUsed: false,
+        });
+        inviteLinks.push({ role, url: `${origin}/onboard?invite=${token}`, token });
+      }
+
+      // Send welcome email with invite links (fire-and-forget)
+      sendInstituteWelcomeWithInvitesEmail({
+        to: input.contactEmail,
+        adminName: ctx.user.name || "Admin",
+        instituteName: input.name,
+        dashboardUrl: `${origin}/institute-admin`,
+        inviteLinks,
+      }).catch(err => console.error("[Email] Welcome email failed:", err));
+
+      return { success: true, instituteId: newInstituteId, code: instituteCode, inviteLinks };
     }),
 
   // Create institute (super admin)

@@ -546,16 +546,28 @@ export default function DemoPreview() {
           <DemoComponent />
 
           {/* Bottom CTA */}
-          <div className={`mt-8 rounded-xl bg-gradient-to-r ${role.gradient} p-6 text-white text-center`}>
-            <h3 className="text-lg font-bold mb-1">Ready to use the real {role.label} portal?</h3>
-            <p className="text-white/70 text-sm mb-4">Sign in with your Manus account to access live data, real classes, and all features.</p>
-            <Link href="/login">
-              <Button className="gap-2 bg-white text-gray-900 hover:bg-gray-100 border-0 font-semibold">
-                <LogIn className="w-4 h-4" />
-                Sign In with Manus OAuth
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
+          <div className={`mt-8 rounded-xl bg-gradient-to-r ${role.gradient} p-6 text-white`}>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold mb-1">Ready to use the real {role.label} portal?</h3>
+                <p className="text-white/70 text-sm">Sign in to access live data, real classes, and all features — it's free to get started.</p>
+              </div>
+              <div className="flex gap-3 flex-shrink-0">
+                <Link href={`/demo?role=${role.id}`}>
+                  <Button variant="outline" className="gap-2 bg-white/10 hover:bg-white/20 text-white border-white/30 font-medium">
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Demo
+                  </Button>
+                </Link>
+                <Link href={`/login?role=${role.id}`}>
+                  <Button className="gap-2 bg-white text-gray-900 hover:bg-gray-100 border-0 font-semibold">
+                    <LogIn className="w-4 h-4" />
+                    Try it Live
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
         </main>
       </div>

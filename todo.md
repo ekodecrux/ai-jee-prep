@@ -744,3 +744,16 @@
 - [x] Login page: "Create your institute" CTA button linking to /register-institute
 - [x] Mobile-optimised login: horizontal swipe carousel for role cards on small screens
 - [x] Mobile carousel: touch/swipe gestures, dot indicators, smooth transitions
+
+## Phase 27: Email Invites, Demo CTA, SEO Meta Tags
+
+- [x] Email invite flow: after institute registration, generate unique invite links per role (teacher/student/parent)
+- [x] Email invite flow: send welcome email to institute admin with invite links
+- [x] Email invite flow: invite links use existing inviteTokens system
+- [x] Demo mode: "Try it live" sticky CTA bar at bottom of /demo page
+- [x] Demo mode: CTA deeplinks to /login with role pre-highlighted via URL param
+- [x] SEO: <title> and <meta description> for Home.tsx (landing page)
+- [x] SEO: Open Graph tags (og:title, og:description, og:image, og:url) for all public pages
+- [x] SEO: Twitter card meta tags for all public pages
+- [x] SEO: canonical URL tag
+- [x] SEO: update client/index.html with base meta tags

@@ -52,6 +52,8 @@ export default function RegisterInstitute() {
   const [, navigate] = useLocation();
   const { isAuthenticated, loading } = useAuth();
   const [submitted, setSubmitted] = useState(false);
+  const [inviteLinks, setInviteLinks] = useState<Array<{ role: string; url: string; token: string }>>([]);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
   const {
     register,
@@ -61,15 +63,22 @@ export default function RegisterInstitute() {
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   const registerMutation = trpc.erp.selfRegisterInstitute.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setInviteLinks((data as any).inviteLinks ?? []);
       setSubmitted(true);
-      toast.success("Institute registered! Redirecting to your portal...");
-      setTimeout(() => navigate("/institute-admin"), 2500);
+      toast.success("Institute registered! Check your email for invite links.");
     },
     onError: (err) => {
       toast.error(err.message || "Registration failed. Please try again.");
     },
   });
+
+  const copyLink = (url: string, idx: number) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 2000);
+    });
+  };
 
   const onSubmit = (data: FormData) => {
     registerMutation.mutate(data);
@@ -111,19 +120,62 @@ export default function RegisterInstitute() {
 
   // Success state
   if (submitted) {
+    const ROLE_COLORS: Record<string, string> = {
+      teacher: "text-teal-400",
+      student: "text-blue-400",
+      parent: "text-rose-400",
+    };
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
-        <Card className="w-full max-w-md bg-gray-900 border-white/10 text-white text-center">
-          <CardContent className="p-10">
-            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-green-400" />
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4 py-10">
+        <Card className="w-full max-w-lg bg-gray-900 border-white/10 text-white">
+          <CardContent className="p-8">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-green-400" />
+              </div>
+              <h2 className="text-xl font-bold text-white mb-1">Institute Registered!</h2>
+              <p className="text-gray-400 text-sm">Your institute is live. Share these invite links with your team:</p>
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Institute Registered!</h2>
-            <p className="text-gray-400 text-sm mb-4">
-              Your institute has been created and you've been assigned as Institute Admin.
-              Redirecting to your portal...
-            </p>
-            <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+
+            {inviteLinks.length > 0 && (
+              <div className="space-y-3 mb-6">
+                {inviteLinks.map((link, idx) => {
+                  const roleLabel = link.role.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
+                  const colorClass = ROLE_COLORS[link.role] ?? "text-gray-300";
+                  return (
+                    <div key={idx} className="bg-gray-800 rounded-lg p-3 border border-white/5">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className={`text-xs font-semibold uppercase tracking-wider ${colorClass}`}>{roleLabel} Invite</span>
+                        <button
+                          onClick={() => copyLink(link.url, idx)}
+                          className="text-xs text-gray-400 hover:text-white flex items-center gap-1 transition-colors"
+                        >
+                          {copiedIdx === idx ? (
+                            <><CheckCircle className="w-3 h-3 text-green-400" /> Copied!</>
+                          ) : (
+                            <>Copy Link</>
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 break-all font-mono leading-relaxed">{link.url}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-6">
+              <p className="text-xs text-amber-300">📧 These links have also been sent to your contact email. Each link expires in 30 days and can be used multiple times.</p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => navigate("/institute-admin")}
+                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0 font-semibold gap-2"
+              >
+                Go to Dashboard <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

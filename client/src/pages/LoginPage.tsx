@@ -85,8 +85,12 @@ const STATS = [
 ];
 
 export default function LoginPage() {
-  const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [carouselIndex, setCarouselIndex] = useState(0);
+  const searchParams = new URLSearchParams(window.location.search);
+  const preselectedRole = searchParams.get("role");
+  const initialRole = preselectedRole && ROLES.find(r => r.id === preselectedRole) ? preselectedRole : null;
+  const initialCarouselIndex = preselectedRole ? Math.max(0, ROLES.findIndex(r => r.id === preselectedRole)) : 0;
+  const [selectedRole, setSelectedRole] = useState<string | null>(initialRole);
+  const [carouselIndex, setCarouselIndex] = useState(initialCarouselIndex);
   const [, navigate] = useLocation();
   const carouselRef = useRef<HTMLDivElement>(null);
 

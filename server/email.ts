@@ -264,3 +264,52 @@ export async function sendAttendanceAlertEmail(opts: {
     html: baseTemplate("Attendance Alert", body),
   });
 }
+
+export async function sendInstituteWelcomeWithInvitesEmail(opts: {
+  to: string;
+  adminName: string;
+  instituteName: string;
+  dashboardUrl: string;
+  inviteLinks: Array<{ role: string; url: string; token: string }>;
+}) {
+  const inviteRows = opts.inviteLinks.map(link => {
+    const roleLabel = link.role.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
+    return `
+      <tr>
+        <td style="padding:10px 0;color:#e2e8f0;font-weight:600;">${roleLabel}</td>
+        <td style="padding:10px 0;">
+          <a href="${link.url}" style="color:#818cf8;word-break:break-all;font-size:13px;">${link.url}</a>
+        </td>
+      </tr>`;
+  }).join("");
+
+  const body = `
+    <p>Congratulations, <strong>${opts.adminName}</strong>! 🎉</p>
+    <p>Your institute <strong>${opts.instituteName}</strong> has been successfully registered on <strong>ExamForge AI</strong>. You are now the Institute Administrator.</p>
+    <div class="info-box">
+      <p>🏫 <strong>Institute:</strong> ${opts.instituteName}</p>
+      <p>👤 <strong>Your role:</strong> Institute Administrator</p>
+      <p>📋 <strong>Status:</strong> Trial plan (up to 100 students, 10 teachers)</p>
+    </div>
+    <p><strong>Invite your team</strong> using the links below — share each link with the appropriate group:</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      <thead>
+        <tr style="border-bottom:1px solid #334155;">
+          <th style="text-align:left;padding:8px 0;color:#94a3b8;font-size:13px;">Role</th>
+          <th style="text-align:left;padding:8px 0;color:#94a3b8;font-size:13px;">Invite Link (expires in 30 days)</th>
+        </tr>
+      </thead>
+      <tbody>${inviteRows}</tbody>
+    </table>
+    <p style="font-size:13px;color:#64748b;">Each link can be used multiple times until it expires. Share the Teacher link with your faculty, the Student link with your students, and the Parent link with parents.</p>
+    <div class="divider"></div>
+    <p style="text-align:center;"><a href="${opts.dashboardUrl}" class="btn">Go to Institute Dashboard →</a></p>
+  `;
+  const transporter = createTransporter();
+  return await transporter.sendMail({
+    from: FROM,
+    to: opts.to,
+    subject: `🎓 ${opts.instituteName} is live on ExamForge AI — Your invite links are ready`,
+    html: baseTemplate(`Welcome, ${opts.instituteName}!`, body),
+  });
+}
