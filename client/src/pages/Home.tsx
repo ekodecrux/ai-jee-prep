@@ -1,6 +1,5 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { getLoginUrl } from "@/const";
 import {
   GraduationCap, BookOpen, Users, BarChart3, Shield, ArrowRight,
   CheckCircle, Star, Atom, FlaskConical, Calculator, Building2,
@@ -91,9 +90,11 @@ export default function Home() {
             <Link href="/api-docs" className="hover:text-gray-900 transition-colors">API Docs</Link>
             <Link href="/search" className="hover:text-gray-900 transition-colors">Search</Link>
           </nav>
-          <Button onClick={() => window.location.href = getLoginUrl()} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white" size="sm">
-            Sign In <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
+          <Link href="/login">
+            <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white" size="sm">
+              Sign In <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
         </div>
       </header>
 
@@ -118,9 +119,11 @@ export default function Home() {
             AI-powered narrations, past papers, live classes, fee management, and analytics — all in one place.
           </p>
           <div className="flex flex-wrap gap-4 justify-center mb-16">
-            <Button size="lg" onClick={() => window.location.href = getLoginUrl()} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white h-12 px-8 text-base font-semibold shadow-lg shadow-indigo-200">
-              <GraduationCap className="w-5 h-5" />Get Started Free<ArrowRight className="w-4 h-4" />
-            </Button>
+            <Link href="/login">
+              <Button size="lg" className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white h-12 px-8 text-base font-semibold shadow-lg shadow-indigo-200">
+                <GraduationCap className="w-5 h-5" />Get Started Free<ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
             <Link href="/api-docs">
               <Button size="lg" variant="outline" className="gap-2 h-12 px-8 text-base border-gray-300">
                 <Code2 className="w-5 h-5" />View API Docs
@@ -165,7 +168,7 @@ export default function Home() {
                       </li>
                     ))}
                   </ul>
-                  <Button onClick={() => window.location.href = getLoginUrl()} className={`w-full gap-2 bg-gradient-to-r ${r.color} text-white border-0 hover:opacity-90`} size="sm">
+                  <Button onClick={() => window.location.href = '/login'} className={`w-full gap-2 bg-gradient-to-r ${r.color} text-white border-0 hover:opacity-90`} size="sm">
                     Sign in as {r.role} <ChevronRight className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -276,9 +279,11 @@ export default function Home() {
           <h2 className="text-4xl font-bold text-gray-900 mb-4">Ready to Get Started?</h2>
           <p className="text-lg text-gray-500 mb-8">Sign in with your Manus account. Your role is automatically detected and you'll be taken straight to your portal.</p>
           <div className="flex flex-wrap gap-4 justify-center mb-6">
-            <Button size="lg" onClick={() => window.location.href = getLoginUrl()} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white h-12 px-8 text-base font-semibold shadow-lg shadow-indigo-200">
-              <GraduationCap className="w-5 h-5" />Sign In with Manus<ArrowRight className="w-4 h-4" />
-            </Button>
+            <Link href="/login">
+              <Button size="lg" className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white h-12 px-8 text-base font-semibold shadow-lg shadow-indigo-200">
+                <GraduationCap className="w-5 h-5" />Sign In with Manus<ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
             <Link href="/search">
               <Button size="lg" variant="outline" className="gap-2 h-12 px-8 text-base border-gray-300">
                 <BookOpen className="w-5 h-5" />Browse Content

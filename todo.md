@@ -720,3 +720,13 @@
 - [x] Stripe: Parent can pay pending fees from their portal
 - [x] Stripe: Payment success webhook updates fee_records status to "paid"
 - [x] Stripe: Institute Admin Fees tab shows real-time payment status
+
+## Phase 25: Multi-Tenant Authentication Login Page
+
+- [x] Dedicated /login page with role cards (Student, Teacher, Parent, Institute Admin, Super Admin)
+- [x] Each role card shows icon, title, description, and "Sign in as [Role]" button
+- [x] Single OAuth sign-in button that redirects to Manus OAuth
+- [x] After login, auto-redirect to role-specific portal based on ERP membership
+- [x] Home.tsx "Get Started" / "Sign In" CTA links to /login
+- [x] /login redirects already-authenticated users to their portal
+- [x] Polished design: dark academic theme, gradient background, animated cards
