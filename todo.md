@@ -757,3 +757,32 @@
 - [x] SEO: Twitter card meta tags for all public pages
 - [x] SEO: canonical URL tag
 - [x] SEO: update client/index.html with base meta tags
+
+## Phase 28: Universal Landing Page + Social Login
+
+- [ ] Redesign Home.tsx as universal multi-exam AI platform (JEE, NEET, UPSC, CAT, GATE, CUET, CBSE, IELTS)
+- [ ] New tagline: aspirational, universal (not exam-specific)
+- [ ] Hero section: shows all major exams covered, not just JEE
+- [ ] Features section: AI doubt solver, adaptive learning, spaced repetition, gamification, live classes
+- [ ] Exam coverage grid: all supported exams with icons and student counts
+- [ ] Stats section: students, institutes, exams covered, learning outcomes
+- [ ] Social login: Google, GitHub, Microsoft buttons on login page
+- [ ] Role-first flow: Step 1 = choose role, Step 2 = choose sign-in provider
+- [ ] Social login buttons styled per provider (Google, GitHub, Microsoft)
+- [ ] Login page: clear two-step visual hierarchy
+- [ ] Update VITE_APP_TITLE to ExamForge AI
+
+## Phase 28: Universal Landing Page & Login Page Redesign
+- [x] Rewrite Home.tsx as world-class universal multi-exam landing page (ExamForge AI branding)
+- [x] Hero section with animated exam ticker (JEE, NEET, GATE, UPSC, CAT, CBSE)
+- [x] Stats bar (8+ exams, 5 roles, 80+ chapters, 2400+ questions)
+- [x] Exam coverage grid (8 major Indian exams with student counts)
+- [x] Features grid (8 features: AI Tutor, Doubt Solver, Live Classes, Analytics, Assignments, ERP, Gamification, Notifications)
+- [x] Roles section with Institute Admin portal mockup card
+- [x] Testimonials section (3 user testimonials)
+- [x] CTA section with gradient background
+- [x] Footer with exam and role links
+- [x] LoginPage.tsx already has social login buttons (Google, GitHub, Microsoft, Email) with role-first flow
+- [x] LoginPage.tsx has mobile swipe carousel, role detail panels, demo CTAs, institute registration CTA
+- [x] 0 TypeScript errors confirmed
+- [x] 47 Vitest tests passing
