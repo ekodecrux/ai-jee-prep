@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import ReportCard from "@/components/ReportCard";
+import GamificationStats from "@/components/GamificationStats";
 import LiveClassesTabComponent from "@/components/LiveClassesTab";
 import { Link, useLocation } from "wouter";
 import PlatformLayout from "@/components/PlatformLayout";
@@ -61,6 +62,8 @@ function OverviewTab() {
 
   return (
     <div className="space-y-6">
+      {/* Gamification stats */}
+      <GamificationStats />
       {/* Welcome banner */}
       <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white">
         <div className="flex items-start justify-between">
@@ -153,8 +156,8 @@ function OverviewTab() {
           {[
             { label: "Mock Test", icon: Trophy, href: "/mock-test/jee_main_full", color: "bg-indigo-600" },
             { label: "Study Plan", icon: Calendar, href: "/study-plan", color: "bg-teal-600" },
+            { label: "Leaderboard", icon: Zap, href: "/leaderboard", color: "bg-amber-600" },
             { label: "Performance", icon: BarChart3, href: "/performance", color: "bg-purple-600" },
-            { label: "All Chapters", icon: BookOpen, href: "/subject/physics", color: "bg-amber-600" },
           ].map(a => (
             <Link key={a.label} href={a.href}>
               <button className={`w-full flex items-center gap-2.5 px-4 py-3 rounded-xl ${a.color} text-white text-sm font-medium hover:opacity-90 transition-opacity`}>

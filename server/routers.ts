@@ -16,6 +16,8 @@ import { reportCardRouter } from "./routers/reportCard";
 import { assignmentsRouter } from "./routers/assignments";
 import { feesRouter } from "./routers/fees";
 import { feePaymentsRouter } from "./routers/feePayments";
+import { studyPlanRouter } from "./routers/studyPlan";
+import { gamificationRouter } from "./routers/gamification";
 
 export const appRouter = router({
   system: systemRouter,
@@ -47,6 +49,8 @@ export const appRouter = router({
   assignments: assignmentsRouter,
   fees: feesRouter,
   feePayments: feePaymentsRouter,
+  studyPlan: studyPlanRouter,
+  gamification: gamificationRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1093,3 +1093,73 @@ export const feePayments = mysqlTable("fee_payments", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type FeePayment = typeof feePayments.$inferSelect;
+
+// ─── User Streaks (Gamification) ──────────────────────────────────────────────
+export const userStreaks = mysqlTable("user_streaks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  currentStreak: int("currentStreak").default(0).notNull(),
+  longestStreak: int("longestStreak").default(0).notNull(),
+  lastActivityDate: varchar("lastActivityDate", { length: 10 }),
+  totalActiveDays: int("totalActiveDays").default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type UserStreak = typeof userStreaks.$inferSelect;
+
+// ─── XP Ledger (Gamification) ─────────────────────────────────────────────────
+export const xpLedger = mysqlTable("xp_ledger", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  action: varchar("action", { length: 64 }).notNull(),
+  xpEarned: int("xpEarned").notNull(),
+  description: varchar("description", { length: 256 }),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type XpLedger = typeof xpLedger.$inferSelect;
+
+// ─── User XP Summary (Gamification) ──────────────────────────────────────────
+export const userXpSummary = mysqlTable("user_xp_summary", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  totalXp: int("totalXp").default(0).notNull(),
+  weeklyXp: int("weeklyXp").default(0).notNull(),
+  level: int("level").default(1).notNull(),
+  badges: json("badges").$type<string[]>(),
+  weekStartDate: varchar("weekStartDate", { length: 10 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type UserXpSummary = typeof userXpSummary.$inferSelect;
+
+// ─── Adaptive Study Plans (AI-generated) ─────────────────────────────────────
+export const adaptiveStudyPlans = mysqlTable("adaptive_study_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  examId: varchar("examId", { length: 64 }),
+  targetExamDate: varchar("targetExamDate", { length: 10 }),
+  weekStart: varchar("weekStart", { length: 10 }).notNull(),
+  generatedPlan: json("generatedPlan").$type<{
+    weekLabel: string;
+    daysUntilExam: number;
+    dailySchedule: Array<{
+      day: string;
+      subjects: Array<{
+        subject: string;
+        chapter: string;
+        chapterId: string;
+        activity: string;
+        durationMinutes: number;
+        priority: "high" | "medium" | "low";
+      }>;
+      totalMinutes: number;
+    }>;
+    weeklyGoals: string[];
+    focusAreas: string[];
+    motivationalNote: string;
+  }>(),
+  weakChapters: json("weakChapters").$type<string[]>(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AdaptiveStudyPlan = typeof adaptiveStudyPlans.$inferSelect;

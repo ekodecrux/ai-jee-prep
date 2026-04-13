@@ -4,8 +4,10 @@ import Layout from "@/components/Layout";
 import { trpc } from "@/lib/trpc";
 import {
   Atom, FlaskConical, Calculator, Clock, Calendar,
-  ChevronDown, ChevronRight, BookOpen, Target, CheckCircle, Lock
+  ChevronDown, ChevronRight, BookOpen, Target, CheckCircle, Lock, Sparkles
 } from "lucide-react";
+import AIStudyPlanTab from "@/components/AIStudyPlanTab";
+import GamificationStats from "@/components/GamificationStats";
 
 const SUBJECT_META = {
   physics: { label: "Physics", icon: Atom, color: "text-physics", bg: "subject-bg-physics subject-physics" },
@@ -54,6 +56,7 @@ const DAILY_SCHEDULE = [
 
 export default function StudyPlanPage() {
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<"ai" | "monthly">("ai");
   const { data: studyPlan } = trpc.chapters.getStudyPlan.useQuery();
 
   const class11Months = STUDY_PLAN.filter(m => m.class === 11);
@@ -62,8 +65,10 @@ export default function StudyPlanPage() {
   return (
     <Layout>
       <div className="container py-8">
+        {/* Gamification stats bar */}
+        <GamificationStats />
         {/* Header */}
-        <div className="hero-gradient rounded-2xl p-6 mb-8">
+        <div className="hero-gradient rounded-2xl p-6 mb-6">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
               <Calendar className="w-6 h-6 text-primary" />
@@ -92,6 +97,37 @@ export default function StudyPlanPage() {
           </div>
         </div>
 
+        {/* Tab switcher */}
+        <div className="flex gap-1 mb-6 bg-muted p-1 rounded-xl w-fit">
+          <button
+            onClick={() => setActiveTab("ai")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "ai"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-primary" />
+            AI Adaptive Plan
+          </button>
+          <button
+            onClick={() => setActiveTab("monthly")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "monthly"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            24-Month Roadmap
+          </button>
+        </div>
+
+        {/* AI Adaptive Plan tab */}
+        {activeTab === "ai" && <AIStudyPlanTab />}
+
+        {/* Monthly roadmap tab */}
+        {activeTab === "monthly" && <>
         {/* Daily schedule */}
         <div className="mb-8">
           <h2 className="font-display font-bold text-lg text-foreground mb-4 flex items-center gap-2">
@@ -225,6 +261,7 @@ export default function StudyPlanPage() {
             })}
           </div>
         </div>
+        </>}
       </div>
     </Layout>
   );

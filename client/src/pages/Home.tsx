@@ -11,14 +11,14 @@ import {
 } from "lucide-react";
 
 const EXAMS = [
-  { name: "JEE Main", students: "12L+", color: "bg-blue-500", icon: Atom },
-  { name: "JEE Advanced", students: "2L+", color: "bg-indigo-600", icon: Atom },
-  { name: "NEET UG", students: "18L+", color: "bg-green-500", icon: FlaskConical },
-  { name: "GATE", students: "9L+", color: "bg-orange-500", icon: Calculator },
-  { name: "UPSC CSE", students: "10L+", color: "bg-purple-500", icon: Globe },
-  { name: "CAT", students: "3L+", color: "bg-rose-500", icon: TrendingUp },
-  { name: "CBSE Class 10", students: "30L+", color: "bg-teal-500", icon: BookOpen },
-  { name: "CBSE Class 12", students: "15L+", color: "bg-cyan-500", icon: FileText },
+  { id: "jee_main", name: "JEE Main", students: "12L+", color: "bg-blue-500", icon: Atom },
+  { id: "jee_advanced", name: "JEE Advanced", students: "2L+", color: "bg-indigo-600", icon: Atom },
+  { id: "neet", name: "NEET UG", students: "18L+", color: "bg-green-500", icon: FlaskConical },
+  { id: "gate", name: "GATE", students: "9L+", color: "bg-orange-500", icon: Calculator },
+  { id: "upsc", name: "UPSC CSE", students: "10L+", color: "bg-purple-500", icon: Globe },
+  { id: null, name: "CAT", students: "3L+", color: "bg-rose-500", icon: TrendingUp },
+  { id: null, name: "CBSE Class 10", students: "30L+", color: "bg-teal-500", icon: BookOpen },
+  { id: null, name: "CBSE Class 12", students: "15L+", color: "bg-cyan-500", icon: FileText },
 ];
 
 const FEATURES = [
@@ -337,16 +337,22 @@ export default function Home() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {EXAMS.map((exam) => {
               const Icon = exam.icon;
-              return (
-                <div key={exam.name} className="group bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-lg hover:border-indigo-100 transition-all cursor-pointer">
+              const cardContent = (
+                <div className="group bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-lg hover:border-indigo-100 transition-all cursor-pointer h-full">
                   <div className={`w-10 h-10 rounded-xl ${exam.color} flex items-center justify-center mb-3 shadow-sm`}>
                     <Icon className="w-5 h-5 text-white" />
                   </div>
                   <div className="font-bold text-gray-900 text-sm mb-1">{exam.name}</div>
                   <div className="text-gray-400 text-xs">{exam.students} aspirants</div>
-                  <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 mt-2 transition-colors" />
+                  <div className="flex items-center gap-1 mt-2">
+                    <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors" />
+                    {exam.id && <span className="text-xs text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">View details</span>}
+                  </div>
                 </div>
               );
+              return exam.id ? (
+                <Link key={exam.name} href={`/exams/${exam.id}`}>{cardContent}</Link>
+              ) : <div key={exam.name}>{cardContent}</div>;
             })}
           </div>
         </div>

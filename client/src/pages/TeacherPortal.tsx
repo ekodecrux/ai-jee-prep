@@ -292,6 +292,7 @@ export default function TeacherPortal() {
             <TabsTrigger value="tests">Tests</TabsTrigger>
             <TabsTrigger value="bridge">Bridge Courses</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="leaderboard">🏆 Leaderboard</TabsTrigger>
           </TabsList>
 
           {/* ─── Schedule ─────────────────────────────────────────────────── */}
@@ -945,9 +946,70 @@ export default function TeacherPortal() {
               <p className="text-sm text-gray-500">Select a class and date in the Attendance tab to view and save attendance records. Summary reports will be available here.</p>
             </div>
           </TabsContent>
+          <TabsContent value="leaderboard" className="space-y-6">
+            <TeacherLeaderboardTab />
+          </TabsContent>
         </Tabs>
       </div>
     </PlatformLayout>
+  );
+}
+
+// ─── Teacher Leaderboard Tab ──────────────────────────────────────────────────
+function TeacherLeaderboardTab() {
+  const { data: leaderboard, isLoading } = trpc.gamification.getLeaderboard.useQuery({ limit: 20 });
+  const awardXp = trpc.gamification.awardXp.useMutation({
+    onSuccess: () => { toast.success("XP awarded!"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  if (isLoading) return (
+    <div className="space-y-3">
+      {[1,2,3,4,5].map(i => <div key={i} className="h-16 bg-muted rounded-xl animate-pulse" />)}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">Class Leaderboard</h2>
+          <p className="text-sm text-muted-foreground">Top students by XP earned this month</p>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {!leaderboard || leaderboard.entries.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <p className="text-lg font-medium">No leaderboard data yet</p>
+            <p className="text-sm">Students earn XP by completing chapters and assessments</p>
+          </div>
+        ) : leaderboard.entries.map((entry, i) => (
+          <div key={entry.userId} className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
+              i === 0 ? 'bg-yellow-100 text-yellow-700' :
+              i === 1 ? 'bg-gray-100 text-gray-600' :
+              i === 2 ? 'bg-orange-100 text-orange-700' :
+              'bg-muted text-muted-foreground'
+            }`}>
+              {entry.rank}
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-foreground">{entry.name || 'Student'}</p>
+              <p className="text-xs text-muted-foreground">{entry.totalXp} XP · Level {entry.level}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-primary">{entry.totalXp} XP</span>
+              <button
+                onClick={() => awardXp.mutate({ action: 'chapter_complete', description: `Teacher bonus for ${entry.name}` })}
+                className="text-xs bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1 rounded-lg transition-colors"
+              >
+                +XP
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

@@ -786,3 +786,49 @@
 - [x] LoginPage.tsx has mobile swipe carousel, role detail panels, demo CTAs, institute registration CTA
 - [x] 0 TypeScript errors confirmed
 - [x] 47 Vitest tests passing
+
+## Phase 29: AI Adaptive Study Plan + Gamification + Exam Detail Pages
+
+### AI Adaptive Study Plan
+- [ ] Add adaptiveStudyPlans table (userId, examId, weekStart, generatedPlan JSON, createdAt)
+- [ ] Add studyPlanRouter tRPC procedure: generatePlan (LLM), getPlan, regeneratePlan
+- [ ] Student portal Study Plan tab: show AI-generated weekly schedule, weak chapter highlights, target exam countdown
+- [ ] LLM prompt uses: student's weak chapters (from heatmap/attempts), target exam, weeks remaining
+
+### Gamification Layer
+- [ ] Add userStreaks table (userId, currentStreak, longestStreak, lastActivityDate, totalDays)
+- [ ] Add xpLedger table (id, userId, action, xpEarned, description, createdAt)
+- [ ] Add userXpSummary table (userId, totalXp, level, badges JSON)
+- [ ] Add leaderboard view (userId, name, totalXp, level, rank, weeklyXp)
+- [ ] Add gamificationRouter: getMyStats, getLeaderboard, awardXp (internal), getStreakStatus
+- [ ] XP award triggers: login (+5), chapter complete (+20), assessment pass (+30), streak milestone (+50)
+- [ ] Student portal: streak counter + XP bar in dashboard header
+- [ ] Student portal: Leaderboard tab showing class rankings
+- [ ] Teacher portal: Class leaderboard view per class
+
+### Public Exam Detail Pages
+- [ ] Add ExamDetailPage at /exams/:examId
+- [ ] Exam detail: hero with exam name, description, eligibility, dates
+- [ ] Syllabus section: subject-wise chapter list with weightage
+- [ ] Stats section: number of aspirants, past paper years available, success rate
+- [ ] Features section: what ExamForge AI offers for this exam
+- [ ] CTA: "Start Preparing" → /login, "Preview Demo" → /demo?role=student
+- [ ] Link exam cards on Home.tsx landing page to /exams/:examId
+- [ ] Add /exams route with full exam catalog listing page
+
+## Phase 29: AI Study Plan + Gamification + Exam Detail Pages (Apr 13 2026)
+
+- [x] DB schema: userStreaks, xpLedger, leaderboard, adaptiveStudyPlans tables migrated
+- [x] studyPlan tRPC router: generate, getMyPlan, listMyPlans procedures
+- [x] gamification tRPC router: awardXp, getMyStats, getLeaderboard, getMyBadges procedures
+- [x] AIStudyPlanTab component with LLM-powered plan generation and weekly schedule display
+- [x] GamificationStats component with streak counter, XP bar, level badge, and badges grid
+- [x] StudyPlanPage: AI Adaptive Plan tab + 24-Month Roadmap tab switcher
+- [x] DashboardPage: GamificationStats added to Overview tab, Leaderboard quick action
+- [x] LeaderboardPage: full public leaderboard with rank, XP, streak, badges
+- [x] TeacherPortal: Leaderboard tab with TeacherLeaderboardTab component and +XP button
+- [x] ExamDetailPage: public /exams/:examId pages for JEE Main, JEE Advanced, NEET, GATE, UPSC
+- [x] Home.tsx: exam cards linked to /exams/:examId with hover "View details" label
+- [x] App.tsx: /exams/:examId and /leaderboard routes registered
+- [x] Vitest tests: gamification.test.ts (24 tests) + studyPlan.test.ts (17 tests)
+- [x] Total: 88 tests passing, 0 TypeScript errors

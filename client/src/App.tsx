@@ -26,6 +26,8 @@ import InstituteConfig from "./pages/InstituteConfig";
 import OnboardingWizard from "./pages/OnboardingWizard";
 import DemoPreview from "./pages/DemoPreview";
 import RegisterInstitute from "./pages/RegisterInstitute";
+import ExamDetailPage from "./pages/ExamDetailPage";
+import LeaderboardPage from "./pages/LeaderboardPage";
 
 // ─── Role → canonical portal path ────────────────────────────────────────────
 const ROLE_HOME: Record<string, string> = {
@@ -131,6 +133,7 @@ function Router() {
       <Route path="/onboard" component={OnboardingWizard} />
       <Route path="/demo" component={DemoPreview} />
       <Route path="/register-institute" component={RegisterInstitute} />
+      <Route path="/exams/:examId" component={ExamDetailPage} />
 
       {/* ── Landing page: redirect authenticated users to their portal ── */}
       <Route path="/">
@@ -163,6 +166,9 @@ function Router() {
       </Route>
       <Route path="/mock-test/:mockTestId">
         <RoleGuard allowedRoles={["student", "user"]}><MockTestPage /></RoleGuard>
+      </Route>
+      <Route path="/leaderboard">
+        <AuthGuard><LeaderboardPage /></AuthGuard>
       </Route>
 
       {/* ── Teacher portal ── */}
