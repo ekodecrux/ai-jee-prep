@@ -285,6 +285,13 @@ export const scorePredictionRouter = router({
         .limit(1);
 
       if (existing) {
+        // Append today's score to history (keep last 90 data points)
+        const today = new Date().toISOString().split("T")[0];
+        const prevHistory = (existing.scoreHistory as Array<{ date: string; score: number }>) || [];
+        const todayEntry = { date: today, score: Math.round(prediction.predictedScore) };
+        const newHistory = prevHistory.some(h => h.date === today)
+          ? prevHistory.map(h => h.date === today ? todayEntry : h)
+          : [...prevHistory, todayEntry].slice(-90);
         await db.update(jeeScorePredictions)
           .set({
             predictedScore: prediction.predictedScore,
@@ -297,10 +304,12 @@ export const scorePredictionRouter = router({
             weakChapters: prediction.weakChapters,
             recommendations: prediction.recommendations,
             dataPointsUsed: prediction.dataPointsUsed,
+            scoreHistory: newHistory,
             updatedAt: new Date(),
           })
           .where(eq(jeeScorePredictions.id, existing.id));
       } else {
+        const today = new Date().toISOString().split("T")[0];
         await db.insert(jeeScorePredictions).values({
           userId: ctx.user.id,
           examId: "jee_main",
@@ -315,6 +324,7 @@ export const scorePredictionRouter = router({
           weakChapters: prediction.weakChapters,
           recommendations: prediction.recommendations,
           dataPointsUsed: prediction.dataPointsUsed,
+          scoreHistory: [{ date: today, score: Math.round(prediction.predictedScore) }],
         });
       }
 

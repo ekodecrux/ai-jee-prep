@@ -1,13 +1,24 @@
 /**
  * ScorePredictionCard
  * Displays the AI-calculated JEE Main & Advanced predicted scores,
- * confidence band, rank estimate, and "improve X chapter → +Y marks" insight cards.
+ * confidence band, rank estimate, score trajectory chart, and
+ * "improve X chapter → +Y marks" insight cards.
  */
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
-import { RefreshCw, TrendingUp, Target, AlertTriangle, ChevronRight } from "lucide-react";
+import { RefreshCw, TrendingUp, Target, AlertTriangle, ChevronRight, BarChart2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceLine,
+} from "recharts";
 
 const SUBJECT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   physics:     { bg: "bg-blue-50",   text: "text-blue-700",   border: "border-blue-200" },
@@ -179,6 +190,65 @@ export default function ScorePredictionCard() {
           ))}
         </div>
       )}
+
+      {/* Score Trajectory Chart */}
+      {(() => {
+        const history = ((prediction as any).scoreHistory as Array<{ date: string; score: number }> | null) ?? [];
+        if (history.length < 2) return null;
+        const chartData = history.map(h => ({
+          date: h.date.slice(5), // "MM-DD"
+          score: h.score,
+        }));
+        const minScore = Math.max(0, Math.min(...chartData.map(d => d.score)) - 20);
+        const maxScore = Math.min(300, Math.max(...chartData.map(d => d.score)) + 20);
+        return (
+          <div className="space-y-2 pt-1 border-t border-border">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+              <BarChart2 className="w-3 h-3 text-primary" />
+              Score Trajectory (last {history.length} data points)
+            </p>
+            <div className="h-32">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    domain={[minScore, maxScore]}
+                    tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "11px",
+                    }}
+                    formatter={(value: number) => [`${value} / 300`, "Predicted Score"]}
+                  />
+                  <ReferenceLine y={200} stroke="hsl(var(--primary))" strokeDasharray="4 2" strokeWidth={1} />
+                  <Line
+                    type="monotone"
+                    dataKey="score"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: "hsl(var(--primary))" }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center">Dashed line = 200 mark target</p>
+          </div>
+        );
+      })()}
 
       {/* AI recommendations */}
       {recommendations.length > 0 && (

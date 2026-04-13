@@ -200,3 +200,72 @@ export const heatmapRouter = router({
       return weak;
     }),
 });
+
+// ─── Exported helper for use in other routers ─────────────────────────────────
+/**
+ * Standalone function to update a student's chapter heatmap after an assessment.
+ * Called from assessmentsRouter.submitAttempt so the feedback loop is instant.
+ */
+export async function updateHeatmapAfterAttempt(params: {
+  userId: number;
+  chapterId: string;
+  subjectId: string;
+  newScore: number;
+  attemptType?: "chapter_test" | "practice" | "mock";
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  const { userId, chapterId, subjectId, newScore } = params;
+
+  const [existing] = await db
+    .select()
+    .from(chapterHeatmap)
+    .where(and(eq(chapterHeatmap.userId, userId), eq(chapterHeatmap.chapterId, chapterId)))
+    .limit(1);
+
+  const newAttempts = (existing?.attemptsCount ?? 0) + 1;
+  const prevAvg = existing?.assessmentAvgScore ?? 0;
+  const newAvg = existing
+    ? Math.round((prevAvg * (newAttempts - 1) + newScore) / newAttempts)
+    : newScore;
+
+  const newColorBand: ColorBand = newAttempts === 0
+    ? "unstarted"
+    : newAvg >= 80 ? "green" : newAvg >= 60 ? "amber" : "red";
+
+  const prevColorBand = (existing?.colorBand ?? "unstarted") as ColorBand;
+  let trendDirection: "improving" | "stable" | "declining" | "new" = "new";
+  if (existing) {
+    if (newAvg > prevAvg + 5) trendDirection = "improving";
+    else if (newAvg < prevAvg - 5) trendDirection = "declining";
+    else trendDirection = "stable";
+  }
+
+  if (existing) {
+    await db.update(chapterHeatmap)
+      .set({
+        heatmapScore: newAvg,
+        colorBand: newColorBand,
+        previousColorBand: prevColorBand,
+        assessmentAvgScore: newAvg,
+        attemptsCount: newAttempts,
+        trendDirection,
+        lastUpdated: new Date(),
+      })
+      .where(eq(chapterHeatmap.id, existing.id));
+  } else {
+    await db.insert(chapterHeatmap).values({
+      userId,
+      chapterId,
+      subjectId,
+      heatmapScore: newScore,
+      colorBand: newColorBand,
+      assessmentAvgScore: newScore,
+      attemptsCount: 1,
+      trendDirection: "new",
+      lastUpdated: new Date(),
+      createdAt: new Date(),
+    });
+  }
+}

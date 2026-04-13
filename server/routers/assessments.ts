@@ -6,6 +6,7 @@ import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { assessments, assessmentAttempts, dailyAttemptLimits, questions, mockTests, mockTestAttempts, chapterProgress, chapters } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { updateHeatmapAfterAttempt } from "./heatmap";
 
 // ─── Helper: Get today's date string ─────────────────────────────────────────
 const getTodayStr = () => new Date().toISOString().split("T")[0];
@@ -195,6 +196,22 @@ export const assessmentsRouter = router({
         weakTopics: uniqueWeakTopics,
         completedAt: new Date()
       } as any);
+
+      // ── Auto-update chapter heatmap after chapter_test attempts ──
+      if (asmt.chapterId && asmt.subjectId && asmt.assessmentType === "chapter_test") {
+        try {
+          await updateHeatmapAfterAttempt({
+            userId: ctx.user.id,
+            chapterId: asmt.chapterId,
+            subjectId: asmt.subjectId,
+            newScore: Math.max(0, Math.min(100, percentage)),
+            attemptType: "chapter_test",
+          });
+        } catch (e) {
+          // Non-fatal: heatmap update failure should not block result delivery
+          console.error("[Heatmap] Auto-update failed:", e);
+        }
+      }
 
       return {
         score: totalScore,

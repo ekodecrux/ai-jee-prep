@@ -856,3 +856,25 @@
 - [x] PerformanceHeatmapTab replaced with ChapterHeatmapGrid + ScorePredictionCard
 - [x] 25 new Vitest tests in heatmap.test.ts (113 total, 7 files)
 - [x] 0 TypeScript errors
+
+## Phase 31: Auto-Heatmap + Streak Cron + Score Chart (Apr 13 2026)
+
+- [ ] Wire heatmap.updateAfterAttempt in assessments router submitAttempt procedure
+- [ ] Wire scorePrediction.recalculate after heatmap update
+- [ ] Install node-cron, add daily 8 PM streak-at-risk cron job
+- [ ] Cron queries all students with streak > 0 and lastActiveDate < 20h ago
+- [ ] Cron inserts streak_at_risk notification for each at-risk student
+- [ ] Update scoreHistory JSON column in jeeScorePredictions on each recalculate
+- [ ] Add Recharts line chart to ScorePredictionCard showing 30-day score trajectory
+- [ ] Vitest tests for cron logic and scoreHistory update
+- [ ] 0 TypeScript errors, checkpoint saved, pushed to GitHub
+
+## Phase 31 Completion (Apr 13, 2026)
+- [x] Wire heatmap.updateAfterAttempt into assessments.submitAttempt (non-fatal, auto-fires on chapter_test)
+- [x] Export updateHeatmapAfterAttempt helper from heatmap.ts for cross-router use
+- [x] Daily streak cron job (streakAlertJob.ts) — runs at 8 PM, inserts streak_at_risk notifications
+- [x] Register scheduleStreakAlertJob in server startup (_core/index.ts)
+- [x] scoreHistory appended on every recalculate call (keeps last 90 data points, deduplicates by date)
+- [x] Score trajectory Recharts LineChart added to ScorePredictionCard (shows when >= 2 data points)
+- [x] 17 new Vitest tests for streak alert job + heatmap auto-update + trajectory history (130 total)
+- [x] 0 TypeScript errors

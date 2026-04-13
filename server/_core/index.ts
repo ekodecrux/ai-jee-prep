@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import v1Router from "../api/v1";
 import { runAllNotificationTriggers } from "../jobs/notificationTriggers";
 import { scheduleAttendanceAlertJob } from "../jobs/attendanceAlertJob";
+import { scheduleStreakAlertJob } from "../jobs/streakAlertJob";
 import { handleStripeWebhook } from "../api/stripeWebhook";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -95,6 +96,8 @@ async function startServer() {
 
     // Schedule nightly attendance alert job (runs at 11 PM)
     scheduleAttendanceAlertJob();
+    // Schedule daily streak-at-risk alert job (runs at 8 PM)
+    scheduleStreakAlertJob();
   });
 }
 
