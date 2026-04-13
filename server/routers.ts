@@ -18,6 +18,8 @@ import { feesRouter } from "./routers/fees";
 import { feePaymentsRouter } from "./routers/feePayments";
 import { studyPlanRouter } from "./routers/studyPlan";
 import { gamificationRouter } from "./routers/gamification";
+import { heatmapRouter } from "./routers/heatmap";
+import { scorePredictionRouter } from "./routers/scorePrediction";
 
 export const appRouter = router({
   system: systemRouter,
@@ -51,6 +53,8 @@ export const appRouter = router({
   feePayments: feePaymentsRouter,
   studyPlan: studyPlanRouter,
   gamification: gamificationRouter,
+  heatmap: heatmapRouter,
+  scorePrediction: scorePredictionRouter,
 });
 
 export type AppRouter = typeof appRouter;

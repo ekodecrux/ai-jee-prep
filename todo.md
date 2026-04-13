@@ -832,3 +832,27 @@
 - [x] App.tsx: /exams/:examId and /leaderboard routes registered
 - [x] Vitest tests: gamification.test.ts (24 tests) + studyPlan.test.ts (17 tests)
 - [x] Total: 88 tests passing, 0 TypeScript errors
+
+## Phase 30: Heatmap + Score Prediction + Push Notifications (Apr 13 2026)
+
+- [ ] Review chapterHeatmap and jeeScorePredictions schema tables
+- [ ] heatmap tRPC router: getMyHeatmap, updateHeatmap procedures
+- [ ] ChapterHeatmapGrid component: 80-chapter colour grid (green/amber/red)
+- [ ] Wire heatmap update after every assessment attempt
+- [ ] scorePrediction tRPC router: getMyPrediction, recalculate procedures
+- [ ] ScorePredictionCard component: predicted score + insight cards
+- [ ] Per-user notifications: streak-at-risk and overdue-lesson alerts
+- [ ] Notification bell badge update with unread count
+- [ ] Wire all three features into Student dashboard Overview tab
+- [ ] Vitest tests for heatmap and prediction logic
+- [ ] 0 TypeScript errors, checkpoint saved, pushed to GitHub
+
+## Phase 30 Completion (Apr 13 2026)
+- [x] heatmap tRPC router: getMyHeatmap, updateAfterAttempt, getWeakChapters
+- [x] ChapterHeatmapGrid component: colour-coded grid with subject filters, progress bar, hover tooltip
+- [x] scorePrediction tRPC router: getMyPrediction (cached 24h), recalculate
+- [x] ScorePredictionCard component: JEE Main/Advanced gauges, rank estimate, weak chapter insight cards, AI recommendations
+- [x] NotificationBell component: unread badge, dropdown panel, 30s polling (PlatformLayout already has one built-in)
+- [x] PerformanceHeatmapTab replaced with ChapterHeatmapGrid + ScorePredictionCard
+- [x] 25 new Vitest tests in heatmap.test.ts (113 total, 7 files)
+- [x] 0 TypeScript errors

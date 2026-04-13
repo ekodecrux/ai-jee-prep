@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import ReportCard from "@/components/ReportCard";
 import GamificationStats from "@/components/GamificationStats";
+import ChapterHeatmapGrid from "@/components/ChapterHeatmapGrid";
+import ScorePredictionCard from "@/components/ScorePredictionCard";
+import NotificationBell from "@/components/NotificationBell";
 import LiveClassesTabComponent from "@/components/LiveClassesTab";
 import { Link, useLocation } from "wouter";
 import PlatformLayout from "@/components/PlatformLayout";
@@ -224,111 +227,13 @@ function OverviewTab() {
 
 // ─── Chapter Performance Heatmap Tab ──────────────────────────────────────────
 function PerformanceHeatmapTab() {
-  const { data: heatmap, isLoading } = trpc.analytics.getHeatmap.useQuery({});
-
-  const CHAPTERS_BY_SUBJECT: Record<string, string[]> = {
-    Physics: [
-      "Units & Measurement", "Kinematics", "Laws of Motion", "Work Energy Power", "Rotational Motion",
-      "Gravitation", "Properties of Matter", "Thermodynamics", "Kinetic Theory", "Oscillations",
-      "Waves", "Electrostatics", "Current Electricity", "Magnetic Effects", "Electromagnetic Induction",
-      "AC Circuits", "EM Waves", "Ray Optics", "Wave Optics", "Dual Nature",
-      "Atoms & Nuclei", "Semiconductors", "Communication Systems", "Experimental Physics", "Modern Physics"
-    ],
-    Chemistry: [
-      "Basic Concepts", "Atomic Structure", "Chemical Bonding", "States of Matter", "Thermodynamics",
-      "Equilibrium", "Redox Reactions", "Hydrogen", "s-Block Elements", "p-Block Elements",
-      "Organic Chemistry Basics", "Hydrocarbons", "Environmental Chemistry", "Solid State", "Solutions",
-      "Electrochemistry", "Chemical Kinetics", "Surface Chemistry", "Metallurgy", "d & f Block",
-      "Coordination Compounds", "Haloalkanes", "Alcohols & Phenols", "Aldehydes & Ketones",
-      "Carboxylic Acids", "Amines", "Biomolecules", "Polymers"
-    ],
-    Mathematics: [
-      "Sets & Relations", "Complex Numbers", "Quadratic Equations", "Sequences & Series", "Binomial Theorem",
-      "Permutations & Combinations", "Mathematical Induction", "Matrices", "Determinants", "Limits",
-      "Continuity", "Differentiation", "Applications of Derivatives", "Integrals", "Applications of Integrals",
-      "Differential Equations", "Vectors", "3D Geometry", "Straight Lines", "Circles",
-      "Conic Sections", "Probability", "Statistics", "Trigonometry", "Inverse Trigonometry",
-      "Mathematical Reasoning", "Linear Programming"
-    ],
-  };
-
-  if (isLoading) return (
-    <div className="flex items-center justify-center h-64">
-      <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-    </div>
-  );
-
   return (
     <div className="space-y-6">
-      {/* Legend */}
-      <div className="flex items-center gap-4 flex-wrap p-4 bg-gray-50 rounded-xl">
-        <span className="text-sm text-gray-500 font-medium">Score Legend:</span>
-        {[
-          { label: "≥80% Mastered", color: "bg-emerald-500" },
-          { label: "60–79% Good", color: "bg-green-400" },
-          { label: "40–59% Fair", color: "bg-yellow-400" },
-          { label: "20–39% Weak", color: "bg-orange-400" },
-          { label: "<20% Critical", color: "bg-red-400" },
-          { label: "Not Attempted", color: "bg-gray-100 border border-gray-200" },
-        ].map(l => (
-          <div key={l.label} className="flex items-center gap-1.5">
-            <div className={`w-3 h-3 rounded ${l.color}`} />
-            <span className="text-xs text-gray-600">{l.label}</span>
-          </div>
-        ))}
-      </div>
-
-      {Object.entries(CHAPTERS_BY_SUBJECT).map(([subject, chapters]) => (
-        <Card key={subject} className="border-gray-200 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base text-gray-900 flex items-center gap-2">
-              {subject === "Physics" && <Atom className="w-4 h-4 text-blue-600" />}
-              {subject === "Chemistry" && <FlaskConical className="w-4 h-4 text-green-600" />}
-              {subject === "Mathematics" && <Calculator className="w-4 h-4 text-amber-600" />}
-              {subject}
-              <span className="text-xs text-gray-400 font-normal ml-1">({chapters.length} chapters)</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-13 gap-1.5">
-              {chapters.map((ch, i) => {
-                const key = `${subject.charAt(0)}${i + 1}`;
-                const score = (heatmap as any)?.[key] || 0;
-                return (
-                  <div
-                    key={ch}
-                    title={`${ch}: ${score}%`}
-                    className={`w-full aspect-square rounded-md ${getHeatColor(score)} cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center`}
-                  >
-                    <span className="text-[9px] font-bold text-white drop-shadow">{i + 1}</span>
-                  </div>
-                );
-              })}
-            </div>
-            {/* Chapter index */}
-            <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-0.5">
-              {chapters.slice(0, 9).map((ch, i) => {
-                const key = `${subject.charAt(0)}${i + 1}`;
-                const score = (heatmap as any)?.[key] || 0;
-                return (
-                  <div key={ch} className="flex items-center gap-1.5 text-xs text-gray-500">
-                    <div className={`w-2 h-2 rounded-sm flex-shrink-0 ${getHeatColor(score)}`} />
-                    <span className="truncate">{i + 1}. {ch}</span>
-                    <span className="text-gray-400 flex-shrink-0">{score}%</span>
-                  </div>
-                );
-              })}
-              {chapters.length > 9 && (
-                <p className="text-xs text-gray-400 col-span-full mt-1">Hover cells for all chapter details</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+      <ChapterHeatmapGrid />
+      <ScorePredictionCard />
     </div>
   );
 }
-
 // ─── Attendance Calendar Tab ───────────────────────────────────────────────────
 function AttendanceTab() {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
